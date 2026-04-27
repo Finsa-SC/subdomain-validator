@@ -142,6 +142,12 @@ def main():
     )
 
     parser.add_argument(
+        "--honeypot",
+        action="store_true",
+        help="Detect honeypot from subdomain"
+    )
+
+    parser.add_argument(
         "-o",
         "--output",
         action="store_true",
@@ -164,7 +170,7 @@ def main():
     args = parser.parse_args()
 
     if args.aggressive:
-        args.verbose = args.title = args.header_tech = args.redirect = True
+        args.verbose = args.title = args.header_tech = args.redirect = args.honeypot = True
 
     config = ScanConfig(
         timeout=args.timeout,
@@ -182,7 +188,8 @@ def main():
         delay=args.delay,
         source=args.source,
         all_resource=args.all,
-        color=args.color
+        color=args.color,
+        honeypot=args.honeypot
     )
     scan_config.current = config
 

@@ -2,8 +2,7 @@ from pathlib import Path
 from typing import Any, Mapping
 from urllib.parse import urlparse
 from utils import is_cloudflare
-from models import scan_config
-
+from models import scan_config, TITLE_IGNORE
 
 # ANSI Colors (Soft/Standard)
 RESET = "\033[0m"
@@ -19,7 +18,7 @@ def colorize(text: Any, color_code: str):
 def print_legend():
     print(f"""
         [ LEGEND ]
-        {colorize("[+]", LIME)} : Host is UP (HTTP/HTTPS 200)
+        {colorize("[*]", LIME)} : Host is UP (HTTP/HTTPS 200)
         {colorize("[!]", YELLOW)} : Access Forbidden (403)
         {colorize("[?]", CYAN)} : Wildcard Subdomain Detected
         {colorize("[-]", WHITE)} : Host is Down / Other Status
@@ -30,7 +29,7 @@ def sign(http_status, https_status, is_wildcard) -> str:
     if is_wildcard:
         return colorize("[?]", CYAN if config.color else WHITE)
     elif http_status == 200 or https_status == 200:
-        return colorize("[+]", LIME if config.color else WHITE)
+        return colorize("[*]", LIME if config.color else WHITE)
     elif http_status == 403 or https_status == 403:
         return colorize("[!]", YELLOW if config.color else WHITE)
     else:
@@ -61,65 +60,77 @@ def show_verbose(http_status, https_status, show_redir=False, http_redir=None, h
         return f"[ {', '.join(status)} ]"
     return ""
 
-def show_output(sub_info: Mapping[str, Any]):
+def show_output(data: Mapping[str, Any], honeypotAnalyze):
     config = scan_config.current
-    server = sub_info["server"]
-    sub = sub_info["subdomain"]
-    http_status = sub_info["http_status"]
-    https_status = sub_info["https_status"]
-    http_title = sub_info["http_title"]
-    https_title = sub_info["https_title"]
-    is_wildcard = sub_info["is_wildcard"]
-    http_latency = sub_info["http_latency"]
-    https_latency = sub_info["https_latency"]
-    ip_address = sub_info["ip_address"]
-    show_available = sub_info["show_available"]
-    show_title = sub_info["show_title"]
-    http_tech = sub_info["http_tech"]
-    https_tech = sub_info["https_tech"]
-    show_tech = sub_info["show_tech"]
 
-    is_verbose = sub_info["show_verbose"]
-    show_redir = sub_info["show_redir"]
-    http_redir = sub_info["http_redir"]
-    https_redir = sub_info["https_redir"]
+    http = data.get("http", {})
+    https = data.get("https", {})
 
+    ##Value
+    ip_address = data.get("ip_address")
+    is_wildcard = data.get("wildcard")
+    sub = data.get("subdomain")
+    h_status = http.get("status")
+    s_status = https.get("status")
+    h_latency = http.get("latency")
+    s_latency = https.get("latency")
+    h_redir = http.get("redir")
+    s_redir = https.get("redir")
+    h_title = http.get("title")
+    s_title = https.get("title")
+    h_tech = http.get("tech")
+    s_tech = https.get("tech")
+    h_server = http.get("server")
+    s_server = https.get("server")
+
+    server = s_server if s_server and "unknown" not in s_server.lower() else h_server or "Unknown"
+
+    ##Config
+    show_redir = config.redirect
+    show_title = config.show_title
+    is_verbose = config.verbose
+    show_tech = config.show_tech
+    show_honeypot = config.honeypot
+    show_available = config.available
 
     # Set Color
     if not config.color:
         color = WHITE
     elif is_wildcard:
         color = CYAN
-    elif 200 in [http_status, https_status]:
+    elif 200 in [h_status, s_status]:
         color = LIME
-    elif 403 in [http_status, https_status]:
+    elif 403 in [h_status, s_status]:
         color = YELLOW
     else:
         color = WHITE
 
-    h_out = http_status if isinstance(http_status, int) else "-"
-    s_out = https_status if isinstance(https_status, int) else "-"
+    h_out = h_status if isinstance(h_status, int) else "-"
+    s_out = s_status if isinstance(s_status, int) else "-"
 
-    status = show_verbose(http_status, https_status, show_redir, http_redir, https_redir, is_verbose)
+    status = show_verbose(h_status, s_status, show_redir, h_redir, s_redir, is_verbose)
 
     output_buffer = []
     output_line = (f"{sub: <40} | {ip_address: <15} | {server: <15} | "
-              f"HTTP: {str(h_out): <3} ({f'{http_latency}ms)' if http_latency else 'N/A)': <7} | "
-              f"HTTPS: {str(s_out): <3} ({f'{https_latency}ms)' if https_latency else 'N/A)': <7} {status}")
+              f"HTTP: {str(h_out): <3} ({f'{h_latency}ms)' if h_latency else 'N/A)': <7} | "
+              f"HTTPS: {str(s_out): <3} ({f'{s_latency}ms)' if s_latency else 'N/A)': <7} {status}")
 
-    output_buffer.append(f"{sub_info['signing']} {colorize(output_line, color)}")
+    output_buffer.append(f"{data.get('signing')} {colorize(output_line, color)}")
 
     if show_title:
-        titles = get_title(http_title, https_title)
+        titles = get_title(h_title, s_title)
         output_buffer.extend([colorize(t, color) for t in titles])
     if show_tech:
-        tech = get_tech(http_tech, https_tech)
+        tech = get_tech(h_tech, s_tech)
         output_buffer.extend([colorize(t, color) for t in tech])
+    if show_honeypot:
+        honeypot = get_honeypot(data, config, honeypotAnalyze)
+        output_buffer.extend([colorize(t, color) for t in honeypot])
 
     if server is not None:
-        if (200 in [http_status, https_status]) or not show_available:
+        if (200 in [h_status, s_status]) or not show_available:
             print("\n".join(output_buffer))
-            return 200 in [http_status, https_status], ip_address
+            return 200 in [h_status, s_status], ip_address
     return False, "No IP"
 
 
@@ -135,13 +146,12 @@ def show_quiet(is_okay: int, sub: str = None, ip: str= None, show_ip: bool = Fal
             print(sub)
 
 def get_title(http_title: str, https_title: str):
-    ignore_list = ["301 moved permanently", "302 found", "object moved", "welcome to nginx!", "welcome to openresty", "403 forbidden", "404 not found"]
-
     def is_valid(title: str):
-        if not title and title.strip() in ["-", ""]:
+        if not title or not isinstance(title, str):
             return False
-        if title.lower() in ignore_list or title.lower() in ignore_list:
-            return False
+        for ignore_title in TITLE_IGNORE:
+            if ignore_title in title.lower().strip():
+                return False
         return True
 
     h = http_title if is_valid(http_title) else None
@@ -202,3 +212,11 @@ def print_banner():
             print(f.read())
     except FileNotFoundError:
         print("Banner file not found!!")
+
+def get_honeypot(data, config, honeypotAnalyze):
+    honeypot = honeypotAnalyze(data, config)
+    score, label, findings = honeypot.run_all()
+    score_pct = f"{score * 100:.1f}%"
+    finding_pct = ", ".join(findings) if findings else "No specific patterns"
+    return [f"        |_Honeypot: {score_pct} [{label}]",
+            f"        |_[ Findings: {finding_pct} ]"]

@@ -1,6 +1,7 @@
 ##Module Function
 from utils import sign, show_output, show_quiet, save_file_healthy, save_file_problem, check_result_dir, save_file_as_json, ReconStats, print_legend
-from .request import http_request, https_request, get_html_title
+from .request import send_request, get_html_title
+from .honeypot import HoneypotAnalyzer
 from models import scan_config
 from sources import get_subdomain
 
@@ -12,7 +13,6 @@ import tldextract
 import socket
 import requests
 
-
 stats = ReconStats()
 
 def validate_subdomain(sub, wildcard_baseline):
@@ -23,29 +23,33 @@ def validate_subdomain(sub, wildcard_baseline):
         except socket.gaierror:
             ip_address = "No IP"
 
-        dict_http = http_request(sub, config.timeout)
-        dict_https = https_request(sub, config.timeout)
+        dict_http = send_request("http", sub, config.timeout)
+        dict_https = send_request("https", sub, config.timeout)
 
         h = dict_http if dict_http else {}
         s = dict_https if dict_https else {}
 
         timestamp = h.get("timestamp") or s.get("timestamp")
 
-        http_status = h.get("http_status")
+        http_status = h.get("status")
         http_server = h.get("http_server", "Unknown")
-        http_latency = h.get("http_latency")
-        http_content = h.get("length", b"")
+        http_latency = h.get("latency")
+        http_size = h.get("length", b"")
         http_redir = h.get("location", "-")
-        http_title = h.get("http_title", "")
+        http_title = h.get("title", "")
         http_header = h.get("header") if h.get("header") is not None else {}
+        http_keys = h.get("header") or []
+        http_hash = h.get("body_hash")
 
         https_status = s.get("https_status")
-        https_server = s.get("https_server", "Unknown")
-        https_latency = s.get("https_latency")
-        https_content = s.get("length", b"")
+        https_server = s.get("server", "Unknown")
+        https_latency = s.get("latency")
+        https_size = s.get("length", b"")
         https_redir = s.get("location", "-")
-        https_title = s.get("https_title", "")
+        https_title = s.get("title", "")
         https_header = s.get("header") if s.get("header") is not None else {}
+        https_keys = s.get("header") or []
+        https_hash = s.get("body_hash")
 
 
         ##Validate Wildcard
@@ -53,10 +57,10 @@ def validate_subdomain(sub, wildcard_baseline):
         http_wildcard = False
         https_wildcard = False
         if baselines["http"]:
-            if baselines["http"]["status"] == 200 and baselines["http"]["size"] == len(http_content) if isinstance(http_content, bytes) else http_content and baselines["http"]["title"] == http_title:
+            if baselines["http"]["status"] == 200 and baselines["http"]["size"] == len(http_size) if isinstance(http_size, bytes) else http_size and baselines["http"]["title"] == http_title:
                 http_wildcard = True
         if baselines["https"]:
-            if baselines["https"]["status"] == 200 and baselines["https"]["size"] == len(https_content) if isinstance(https_content, bytes) else https_content and baselines["https"]["title"] == https_title:
+            if baselines["https"]["status"] == 200 and baselines["https"]["size"] == len(https_size) if isinstance(https_size, bytes) else https_size and baselines["https"]["title"] == https_title:
                 https_wildcard = True
         if (http_wildcard or https_wildcard) and config.no_wildcard:
             return None, None, None
@@ -64,61 +68,43 @@ def validate_subdomain(sub, wildcard_baseline):
         is_any_wildcard = http_wildcard or https_wildcard
         signing = sign(http_status, https_status, is_any_wildcard)
 
-        server = http_server if http_status != None else https_server
-
-        sub_info = {
-            "server": server,
-            "signing": signing,
-            "subdomain": sub,
-            "http_status": http_status,
-            "https_status": https_status,
-            "ip_address": ip_address,
-            "http_latency": http_latency,
-            "https_latency": https_latency,
-            "show_available": config.available,
-            "show_verbose": config.verbose,
-            "show_redir": config.redirect,
-            "http_redir": http_redir,
-            "https_redir": https_redir,
-            "http_title": http_title,
-            "https_title": https_title,
-            "show_title": config.show_title,
-            "http_tech": http_header,
-            "https_tech": https_header,
-            "show_tech": config.show_tech,
-            "is_wildcard": is_any_wildcard
-        }
-        dict_info = {
+        data = {
             "timestamp": timestamp,
             "subdomain": sub,
             "ip_address": ip_address,
-            "status": {
-                "http": http_status,
-                "https": https_status
+            "http": {
+                "status": http_status,
+                "title": http_title,
+                "server": http_server,
+                "size": http_size if http_size else 0,
+                "latency": http_latency,
+                "redir": http_redir,
+                "tech": http_header,
+                "body_hash": http_hash,
+                "header_keys": http_keys
             },
-            "server": server,
-            "latency": {
-                "http": http_latency,
-                "https": https_latency
+            "https": {
+                "status": https_status,
+                "title": https_title,
+                "server": https_server,
+                "size": https_size if https_size else 0,
+                "latency": https_latency,
+                "redir": https_redir,
+                "tech": https_header,
+                "body_hash": https_hash,
+                "header_keys": https_keys
             },
-            "redirect": {
-                "http": http_redir,
-                "https": https_redir
-            },
-            "size": {
-                "http": http_content if http_content else 0,
-                "https": https_content if https_content else 0
-            },
-            "posible_wildcard": is_any_wildcard
+            "signing": signing,
+            "wildcard": is_any_wildcard
         }
 
         status_ok = 200 in [http_status, https_status]
         if config.quiet:
             show_quiet(is_okay=status_ok, sub=sub, ip=ip_address, show_ip=config.quiet_ip)
         else:
-            show_output(sub_info)
+            show_output(data, HoneypotAnalyzer)
         stats.log(http_status, https_status)
-        return status_ok, ip_address, dict_info
+        return status_ok, ip_address, data
 
     except requests.exceptions.RequestException:
         return False, "No IP", None
@@ -152,7 +138,7 @@ def check_subdomain(domain: str):
 
     if not config.quiet:
         print(print_legend())
-        print(f"[*] Found {len(subdomain)} potential hosts, starting validation\n")
+        print(f"[+] Found {len(subdomain)} potential hosts, starting validation\n")
 
     wildcard_baseline = check_wildcard(get_domain_root(subdomain[0]))
     try:
@@ -197,6 +183,9 @@ def get_domain_root(full_domain: str):
     root = tldextract.extract(full_domain)
     return f"{root.domain}.{root.suffix}"
 
+#=======================================================================================================
+###UPDATE
+#=======================================================================================================
 def check_wildcard(domain: str):
     wild_sub = f"{os.urandom(2).hex()}.{domain}"
     baselines = {"http": None, "https": None}

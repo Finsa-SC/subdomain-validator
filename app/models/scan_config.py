@@ -18,5 +18,6 @@ class ScanConfig:
     source: str
     all_resource: bool
     color: bool
+    honeypot: bool
 
 current: 'ScanConfig' = None
