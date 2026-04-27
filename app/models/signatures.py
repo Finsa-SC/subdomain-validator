@@ -38,6 +38,6 @@ HONEYPOT_SERVERS = {
 OBSOLETE_VERSIONS = ["apache/2.2", "php/5.", "iis/7.0", "iis/6.0"]
 
 SUSPICIOUS_HEADER_ORDERS = [
-    ["content-type", "server", "date"], # Urutan aneh
+    ["content-type", "server", "date"], 
     ["x-powered-by", "content-type", "server"]
 ]

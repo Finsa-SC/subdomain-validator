@@ -8,9 +8,9 @@ import hashlib
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-def http_request(web ,sub, time_out):
+def http_request(proto ,sub, time_out):
     try:
-        sub_url = f"{web}://{sub}"
+        sub_url = f"{proto}://{sub}"
         res = requests.get(url=sub_url, timeout=time_out, allow_redirects=False, verify=False)
 
         body_hash = hashlib.md5(res.content).hexdigest() if res.content else "d41d8cd98f00b204e9800998ecf8427e"
