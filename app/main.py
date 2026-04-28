@@ -5,7 +5,8 @@ from models import ScanConfig
 from dotenv import load_dotenv
 import os
 import argparse
-from utils import print_banner
+from utils import get_banner
+import sys
 
 
 ### Init env
@@ -13,21 +14,23 @@ load_dotenv()
 TIMEOUT = float(os.getenv("TIMEOUT", 3.0))
 THREAD = int(os.getenv("THREAD", 10))
 DEBUG = os.getenv("DEBUG", "false").lower().strip() == "true"
-DELAY = os.getenv("DELAY", 0.0)
+DELAY = float(os.getenv("DELAY", 0.0))
 
 VERSION = "1.0.0"
 
 def main():
+    banner = get_banner()
     parser = argparse.ArgumentParser(
-        description="Subdomain recon tool - FinSky IT Solutions",
+        prog="subf",
+        description=f"{banner}\nSubdomain recon tool - FinSky IT Solutions",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="[!] WARNING: Use with caution. Scanning honeypots will trigger logs on the target server."
     )
-
     # 1. INPUT ARGUMENTS
     input_group = parser.add_argument_group('INPUT ARGUMENTS')
     me_group = input_group.add_mutually_exclusive_group(required=True)
     me_group.add_argument("-d", "--domain", help="Search for single domain")
-    me_group.add_argument("-dL", "--domain-list", help="Validate multiple domain from file")
+    me_group.add_argument("-dL", "--domain-list", help="Validate multiple subdomain from file")
     input_group.add_argument("-s", "--source", type=str, help="Select source from domain track record")
 
     # 2. CONFIGURATION (Resource & Performance)
@@ -44,7 +47,8 @@ def main():
     profile_group.add_argument("-x", "--header-tech", action="store_true", help="Show subdomain tech from header")
     profile_group.add_argument("-r", "--redirect", action="store_true", help="Show redirect information")
     profile_group.add_argument("--honeypot", action="store_true", help="Enable honeypot fingerprinting (LOGGED!)")
-    profile_group.add_argument("-a", "--aggressive", action="store_true", help="Enable all informative flags (-v, -t, -x, etc.)")
+    profile_group.add_argument("-a", "--aggressive", action="store_true",
+                               help="Enable all informative flags (-v, -t, -x, etc.)")
 
     # 4. OUTPUT FILTERING
     filter_group = parser.add_argument_group('OUTPUT FILTERING')
@@ -61,10 +65,21 @@ def main():
 
     parser.add_argument("-V", "--version", action="version", version=f"subf {VERSION}")
 
+    if len(sys.argv) == 1:
+        parser.print_help()
+        sys.exit(0)
+
     args = parser.parse_args()
 
     if args.aggressive:
         args.verbose = args.title = args.header_tech = args.redirect = True
+
+    # Info simple
+    if not args.quiet:
+        print(banner)
+        print(f"[*] Starting validation with {args.thread} threads (Delay: {args.delay}s)")
+        print("[*] Workflow: Wildcard Baseline (2 req) -> Validation (HTTP & HTTPS)")
+        print("-" * 60)
 
     config = ScanConfig(
         timeout=args.timeout,
@@ -86,7 +101,6 @@ def main():
         honeypot=args.honeypot
     )
     scan_config.current = config
-
 
     if args.redirect and not args.verbose:
         parser.error("redirect need verbose to show")

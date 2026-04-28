@@ -6,6 +6,7 @@ dependencies = [
     "curl-cffi>=0.15.0",
     "dotenv>=0.9.9",
     "fake-useragent>=2.2.0",
+    "python-dotenv>=1.2.2",
     "requests>=2.33.1",
     "tldextract>=5.3.1",
 ]

@@ -205,14 +205,14 @@ def clean_redirect(url, max_len: int = 30):
         return target[:max_len-3] + "..."
     return target
 
-def print_banner():
+def get_banner():
     base_path = Path(__file__).resolve().parent.parent.parent
     banner_path = base_path / "assets" / "banner.txt"
     try:
         with open(banner_path, "r") as f:
-            print(f.read())
+            return f.read()
     except FileNotFoundError:
-        print("Banner file not found!!")
+        print("-----( Subdomain Validator )-----")
 
 def get_honeypot(data, config, honeypotAnalyze):
     honeypot = honeypotAnalyze(data, config)

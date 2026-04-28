@@ -365,6 +365,7 @@ dependencies = [
     { name = "curl-cffi" },
     { name = "dotenv" },
     { name = "fake-useragent" },
+    { name = "python-dotenv" },
     { name = "requests" },
     { name = "tldextract" },
 ]
@@ -374,6 +375,7 @@ requires-dist = [
     { name = "curl-cffi", specifier = ">=0.15.0" },
     { name = "dotenv", specifier = ">=0.9.9" },
     { name = "fake-useragent", specifier = ">=2.2.0" },
+    { name = "python-dotenv", specifier = ">=1.2.2" },
     { name = "requests", specifier = ">=2.33.1" },
     { name = "tldextract", specifier = ">=5.3.1" },
 ]

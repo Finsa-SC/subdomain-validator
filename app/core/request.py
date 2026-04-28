@@ -1,7 +1,6 @@
-from curl_cffi import requests
-
 from .stealth import StealthMode
 
+from curl_cffi import requests
 import html
 import urllib3
 import re

@@ -1,22 +1,23 @@
 ##Module Function
-from utils import sign, show_output, show_quiet, save_file_healthy, save_file_problem, check_result_dir, save_file_as_json, ReconStats, print_legend
-from .request import send_request, get_html_title
+from utils import sign, show_output, show_quiet, ReconStats
+from .request import send_request
 from .honeypot import HoneypotAnalyzer
 from models import scan_config
-from sources import get_subdomain
 
 ##Module Package
-from time import sleep
-from concurrent.futures import ThreadPoolExecutor
-import os
-import tldextract
 import socket
 import requests
+import random
+import time
 
 stats = ReconStats()
 
 def validate_subdomain(sub, wildcard_baseline):
     config = scan_config.current
+
+    if config.delay > 0:
+        humane_sleep(config.delay)
+
     try:
         try:
             ip_address = socket.gethostbyname(sub)
@@ -112,100 +113,12 @@ def validate_subdomain(sub, wildcard_baseline):
         print(f"Error: {sub} -> {e}")
         return False, "No IP", None
 
-
-def check_subdomain(domain: str):
+def humane_sleep(base_delay: float):
     config = scan_config.current
-    healthy_ip = set()
-    problem_ip = set()
 
-    subdomain = []
-    if os.path.isfile(domain):
-        if not config.quiet:
-            print("validate as file")
-        with open(domain, "r")as f:
-            subdomain = [line.strip() for line in f.read().splitlines() if line.strip()]
-    elif "." in domain and not domain.endswith(".txt"):
-        if not config.quiet:
-            print(f"Search for subdomain for {domain}")
-        subdomain = get_subdomain(domain, config.all_resource, config.source)
+    if config.delay > 0:
+        jitter = base_delay * 0.5
+        actual_delay = random.uniform(base_delay - jitter, base_delay + jitter)
+        time.sleep(actual_delay)
     else:
-        print("[x] Invalid domain or file path!")
-        exit(0)
-
-    if not subdomain:
-        print("[x] No subdomain found!")
-        exit(0)
-
-    if not config.quiet:
-        print(print_legend())
-        print(f"[+] Found {len(subdomain)} potential hosts, starting validation\n")
-
-    wildcard_baseline = check_wildcard(get_domain_root(subdomain[0]))
-    try:
-        with ThreadPoolExecutor(max_workers=config.thread) as executor:
-            futures = []
-            for s in subdomain:
-                futures.append(executor.submit(validate_subdomain, s, wildcard_baseline))
-
-                if config.delay > 0:
-                    sleep(config.delay)
-
-        sub_list = []
-        for future in futures:
-            is_ok, ip, dict_sub = future.result()
-            if ip != "No IP":
-                if is_ok:
-                    healthy_ip.add(ip)
-                else:
-                    problem_ip.add(ip)
-            if dict_sub:
-                sub_list.append(dict_sub)
-
-        if config.save_file_plain:
-            root = get_domain_root(subdomain[0])
-            check_result_dir()
-            save_file_healthy(root, healthy_ip)
-            save_file_problem(root, problem_ip)
-        if config.save_file_json:
-            check_result_dir()
-            root = get_domain_root(subdomain[0])
-            save_file_as_json(root, sub_list)
-
-        if not config.quiet:
-            stats.summary()
-
-    except KeyboardInterrupt:
-        print("\n[!]Process stop by user...")
-        exit(0)
-
-
-def get_domain_root(full_domain: str):
-    root = tldextract.extract(full_domain)
-    return f"{root.domain}.{root.suffix}"
-
-#=======================================================================================================
-###UPDATE
-#=======================================================================================================
-def check_wildcard(domain: str):
-    wild_sub = f"{os.urandom(2).hex()}.{domain}"
-    baselines = {"http": None, "https": None}
-    try:
-        res = requests.get(f"http://{wild_sub}", timeout=5, allow_redirects=False)
-        wild_status = res.status_code
-        wild_size = len(res.content)
-        wild_title = get_html_title(res)
-        baselines["http"] = {"title": wild_title, "status": wild_status, "size": wild_size}
-    except Exception as e:
-        #print(f"[x] HTTP Wildcard check failed: {e}")
-        ...
-
-    try:
-        res = requests.get(f"https://{wild_sub}", allow_redirects=False, timeout=5, verify=False)
-        wild_status = res.status_code
-        wild_size = len(res.content)
-        wild_title = get_html_title(res)
-        baselines["https"] = {"title": wild_title, "status": wild_status, "size": wild_size}
-    except Exception as e:
-        #print(f"[x] HTTPS Wildcard check failed: {e}")
-        ...
-    return baselines
+        time.sleep(random.uniform(0.1, 0.5))
