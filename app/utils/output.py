@@ -124,8 +124,9 @@ def show_output(data: Mapping[str, Any], honeypotAnalyze):
         tech = get_tech(h_tech, s_tech)
         output_buffer.extend([colorize(t, color) for t in tech])
     if show_honeypot:
-        honeypot = get_honeypot(data, config, honeypotAnalyze)
-        output_buffer.extend([colorize(t, color) for t in honeypot])
+        honeypot, suggested_color = get_honeypot(data, config, honeypotAnalyze)
+        if honeypot != "-":
+            output_buffer.extend([colorize(t, suggested_color if suggested_color else color) for t in honeypot])
 
     if server is not None:
         if (200 in [h_status, s_status]) or not show_available:
@@ -216,7 +217,18 @@ def print_banner():
 def get_honeypot(data, config, honeypotAnalyze):
     honeypot = honeypotAnalyze(data, config)
     score, label, findings = honeypot.run_all()
+    if score == 0.0: return "-", None
+
+    suggested_color = WHITE
+    if score >= 0.8:
+        suggested_color = "\033[31;1m"
+    elif score >= 0.4:
+        suggested_color = "\033[38;5;208m"
+
+    bars_lenght = 10
+    filled_len = int(round(bars_lenght * score))
+    bar = "█" * filled_len + "░" * (bars_lenght - filled_len)
     score_pct = f"{score * 100:.1f}%"
     finding_pct = ", ".join(findings) if findings else "No specific patterns"
-    return [f"        |_Honeypot: {score_pct} [{label}]",
-            f"        |_[ Findings: {finding_pct} ]"]
+    return [f"        |_Honeypot: {bar} {score_pct} [{label}]",
+            f"        |_[ Findings: {finding_pct} ]"], suggested_color

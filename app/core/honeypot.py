@@ -1,5 +1,5 @@
 from models import (HONEYPOT_TITLE, HONEYPOT_NAME, HONEYPOT_HASHES, HONEYPOT_SERVERS, OBSOLETE_VERSIONS,
-    SUSPICIOUS_HEADER_ORDERS, SIGNAL_TIER, SIGNAL_WEIGHTS, CONFIDENCE_LABELS)
+    SUSPICIOUS_HEADER_ORDERS, SIGNAL_TIER, SIGNAL_WEIGHTS, CONFIDENCE_LABELS, HONEYPOT_HEADERS)
 from utils.save_file import is_cloudflare
 
 import math
@@ -11,7 +11,7 @@ def noisy_or(probabilities: list[float]) -> float:
     complement = math.prod(1.0 - prob for prob in probabilities)
     return 1.0 - complement
 
-def get_confidence_lever(score: float) -> str:
+def get_confidence_level(score: float) -> str:
     for treshold, label in CONFIDENCE_LABELS:
         if score >= treshold:
             return label
@@ -39,8 +39,8 @@ class HoneypotAnalyzer:
         return "cloudflare" in h_server or "cloudflare" in s_server
 
     def _is_host_responsive(self):
-        h_status = self.http["status"]
-        s_status = self.https["status"]
+        h_status = self.http.get("status")
+        s_status = self.https.get("status")
         return h_status in [200, 403] or s_status in [200, 403]
 
     def _compute_score(self) -> float:
@@ -102,17 +102,32 @@ class HoneypotAnalyzer:
                 break
         h_keys = [k.lower() for k in self.http.get("header_keys", [])]
         s_keys = [k.lower() for k in self.https.get("header_keys", [])]
+        all_headers = set(h_keys) | set(s_keys)
 
-        for keys in (h_keys, s_keys):
+        for trap_header in HONEYPOT_HEADERS:
+            if trap_header in all_headers:
+                self._add_signal("honeypot_header",
+                                 f"Literal honeypot header found: '{trap_header}'")
+                break
+
+        for keys in [h_keys, s_keys]:
             if not keys: continue
             for trap_order in SUSPICIOUS_HEADER_ORDERS:
                 if all(item in keys for item in trap_order):
                     indices = [keys.index(item) for item in trap_order]
                     if indices == sorted(indices):
                         self._add_signal("header_order",
-                                         f"Header order matches honeypot framework fingerprint: "
-                                         f"{trap_order}")
+                                         "Suspicious HTTP header ordering detected")
                         break
+
+        h_title = (self.http.get("title") or "").lower().strip()
+        s_title = (self.https.get("title") or "").lower().strip()
+        for title in HONEYPOT_TITLE:
+            if title in h_title or title in s_title:
+                self._add_signal("clickbait_title",
+                                 f"Default server page title detected: '{title}'")
+                break
+
 
     def check_subdomain(self):
         if not self._is_host_responsive():
@@ -131,8 +146,7 @@ class HoneypotAnalyzer:
 
         h_hash = self.http.get("body_hash")
         s_hash = self.https.get("body_hash")
-        h_size = self.http.get("size", 0)
-        s_size = self.https.get("size", 0)
+        h_size = self.http.get("size")
 
         h_200 = self.http.get("status") == 200
         s_200 = self.https.get("status") == 200
@@ -140,42 +154,19 @@ class HoneypotAnalyzer:
             self._add_signal("identical_body_both_proto",
                              "Identical body on HTTP and HTTPS (no redirect) — abnormal for real servers")
 
-        h_title = self.http.get("title", "").strip()
-        s_title = self.https.get("title", "").strip()
+        EMPTY_HASH = "d41d8cd98f00b204e9800998ecf8427e"
+        if h_200 and h_hash == EMPTY_HASH and h_size == 0:
+            self._add_signal("missing_title",
+                             "HTTP 200 with empty body — server returning nothing")
+
+        h_title = self.http.get("title", "").strip().lower()
+        s_title = self.https.get("title", "").strip().lower()
         if h_200 and not h_title:
             self._add_signal("missing_title",
                              "HTTP 200 but no page title — possible bare honeypot response")
-            if s_200 and not s_title:
-                self._add_signal("missing_title",
-                                 "HTTPS 200 but no page title — possible bare honeypot response")
-
-    def check_structural(self) -> None:
-        h_hash = self.http.get("body_hash")
-        s_hash = self.https.get("body_hash")
-        h_keys = [k.lower() for k in self.http.get("header_keys", [])]
-        s_keys = [k.lower() for k in self.https.get("header_keys", [])]
-
-        for b_hash in [h_hash, s_hash]:
-            if b_hash in HONEYPOT_HASHES:
-                self._add_signal("hash_match",
-                f"Content hash matches known honeypot: {HONEYPOT_HASHES[b_hash]}")
-                break
-
-        for keys in [h_keys, s_keys]:
-            if not keys: continue
-            for trap_order in SUSPICIOUS_HEADER_ORDERS:
-                if all(item in keys for item in trap_order):
-                    indices = [keys.index(item) for item in trap_order]
-                    if indices == sorted(indices):
-                        self._add_signal("header_order",
-                        "Suspicious HTTP header ordering detected")
-                        break
-
-        h_size = self.http.get("size", 0)
-        s_size = self.https.get("size", 0)
-        if h_size == s_size and h_size > 0:
-            self._add_signal("identical_size",
-            "Identical response size on both protocols")
+        if s_200 and not s_title:
+            self._add_signal("missing_title",
+                             "HTTPS 200 but no page title — possible bare honeypot response")
 
     def run_all(self):
         self.check_server()
@@ -184,5 +175,5 @@ class HoneypotAnalyzer:
         self.check_behavioral()
 
         score = self._compute_score()
-        label = get_confidence_lever(score)
+        label = get_confidence_level(score)
         return score, label, self.findings
