@@ -120,12 +120,12 @@ class HoneypotAnalyzer:
                                          "Suspicious HTTP header ordering detected")
                         break
 
-        h_title = (self.http.get("title") or "")
-        s_title = (self.https.get("title") or "")
+        h_title = (self.http.get("title") or "").lower().strip()
+        s_title = (self.https.get("title") or "").lower().strip()
         for title in HONEYPOT_TITLE:
             if title in h_title or title in s_title:
                 self._add_signal("clickbait_title",
-                                 "Default server page title detected: '{title}'")
+                                 f"Default server page title detected: '{title}'")
                 break
 
 
@@ -159,8 +159,8 @@ class HoneypotAnalyzer:
             self._add_signal("missing_title",
                              "HTTP 200 with empty body — server returning nothing")
 
-        h_title = self.http.get("title", "").strip()
-        s_title = self.https.get("title", "").strip()
+        h_title = self.http.get("title", "").strip().lower()
+        s_title = self.https.get("title", "").strip().lower()
         if h_200 and not h_title:
             self._add_signal("missing_title",
                              "HTTP 200 but no page title — possible bare honeypot response")

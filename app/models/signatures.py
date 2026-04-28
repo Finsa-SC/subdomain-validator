@@ -87,6 +87,7 @@ SIGNAL_WEIGHTS = {
     "cloudflare_leak":   0.85,
     "server_sig_match":  0.82,
     "obsolete_version":  0.65,
+    "identical_body_both_proto": 0.50,
     "header_order":      0.52,
     "clickbait_title":   0.48,
     "subdomain_name":    0.20,
@@ -110,7 +111,6 @@ CONFIDENCE_LABELS = [
     (0.90, "Confirmed"),
     (0.75, "Likely"),
     (0.50, "Probable"),
-    (0.50, "identical_body_both_proto"),
     (0.25, "Possible"),
     (0.00, "Unlikely"),
 ]
