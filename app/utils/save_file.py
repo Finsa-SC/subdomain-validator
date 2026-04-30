@@ -3,10 +3,10 @@ from models import CLOUDFLARE_IPS
 import ipaddress
 import os
 import json
+from pathlib import Path
 
 def check_result_dir():
-    if not os.path.exists("results"):
-        os.makedirs("results")
+    Path("result").mkdir(parents=True, exist_ok=True)
 
 def is_cloudflare(ip):
     if not ip and ip != "No IP":
@@ -18,7 +18,8 @@ def is_cloudflare(ip):
     return False
 
 def save_file_healthy(domain: str, ip_sets: set[str]):
-    file_name = f"results/{domain}_healthy_ip.txt"
+    check_result_dir()
+    file_name = Path("result") / f"{domain}_healthy_ip.txt"
     with open(file_name, "w") as file:
         for ip in ip_sets:
             if not is_cloudflare(ip):
@@ -26,15 +27,31 @@ def save_file_healthy(domain: str, ip_sets: set[str]):
     print(f"Success save healthy ip as {file_name}")
 
 def save_file_problem(domain: str, ip_sets: set[str]):
-    file_name = f"results/{domain}_problem_ip.txt"
+    check_result_dir()
+    file_name = Path("results") / f"{domain}_problem_ip.txt"
     with open(file_name, "w") as file:
         for ip in ip_sets:
             if not is_cloudflare(ip):
                 file.write(f"{ip}\n")
     print(f"Success save problem ip as {file_name}")
 
-def save_file_as_json(domain: str ,dict_sub):
-    file_name = f"results/{domain}.json"
-    with open(file_name, "w")as file:
-        json.dump(dict_sub, file, indent=4)
-    print(f"Success save JSON result as {file_name}")
+def save_file_as_json(domain: str , all_result, scan_metadata):
+    check_result_dir()
+    file_name = Path("results") / f"{domain}.json"
+
+    smart_structure = {
+        "metadata": scan_metadata,
+        "summary": {
+            "total_found": len(all_result),
+            "unique_active": 0,
+            "honeypots": 0,
+            "wildcard": 0
+        },
+        "findings": {
+            "active_host": [],
+            "honeypots": [],
+            "groups": {}
+        }
+    }
+
+    seen_fingerprint = {}

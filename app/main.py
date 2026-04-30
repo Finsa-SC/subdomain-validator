@@ -76,7 +76,6 @@ def main():
 
     # Info simple
     if not args.quiet:
-        print(banner)
         print(f"[*] Starting validation with {args.thread} threads (Delay: {args.delay}s)")
         print("[*] Workflow: Wildcard Baseline (2 req) -> Validation (HTTP & HTTPS)")
         print("-" * 60)
