@@ -1,11 +1,16 @@
+from sys import stdin
+
+import fake_useragent
+
 from core import check_subdomain
 from models import scan_config
 from models import ScanConfig
 
 from dotenv import load_dotenv
-import os
-import argparse
 from utils import get_banner
+import os
+import tempfile
+import argparse
 import sys
 
 
@@ -19,9 +24,22 @@ DELAY = float(os.getenv("DELAY", 0.0))
 VERSION = "1.0.0"
 
 def main():
+    temp_path = None
+
+    if not sys.stdin.isatty():
+        try:
+            temp = tempfile.NamedTemporaryFile(delete=False, mode='w', encoding='utf-8')
+            temp.write(sys.stdin.read())
+            temp.close()
+            temp_path = temp.name
+            sys.argv.extend(["-dL", temp_path])
+        except Exception as e:
+            print(f"[x] Failed reading pipe data: {e}")
+            sys.exit(1)
+
     banner = get_banner()
     parser = argparse.ArgumentParser(
-        prog="subf",
+        prog="subv",
         description=f"{banner}\nSubdomain recon tool - FinSky IT Solutions",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="[!] WARNING: Use with caution. Scanning will trigger logs on the target server."
@@ -57,6 +75,8 @@ def main():
     filter_group.add_argument("-q", "--quiet", action="store_true", help="Show clean output (only 200 status)")
     filter_group.add_argument("--ip", action="store_true", help="Show IP address instead of subdomain")
     filter_group.add_argument("--color", action="store_true", help="Color output text")
+    filter_group.add_argument("--min-size", type=int, help="Filter response larger than N bytes")
+    filter_group.add_argument("--max-size", type=int, help="Filter response larger than N bytes")
 
     # 5. EXPORT OPTIONS
     export_group = parser.add_argument_group('EXPORT OPTIONS')
@@ -97,7 +117,9 @@ def main():
         source=args.source,
         all_resource=args.all,
         color=args.color,
-        honeypot=args.honeypot
+        honeypot=args.honeypot,
+        max_size=args.max_size,
+        min_size=args.min_size
     )
     scan_config.current = config
 
@@ -110,6 +132,12 @@ def main():
         check_subdomain(args.domain)
     elif args.domain_list:
         check_subdomain(args.domain_list)
+
+    if temp_path:
+        try:
+            os.remove(temp_path)
+        except OSError:
+            ...
 
 if __name__ == "__main__":
     main()

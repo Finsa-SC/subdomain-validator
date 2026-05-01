@@ -1,4 +1,6 @@
 ##Module Function
+from operator import truediv
+
 from utils import sign, show_output, show_quiet, ReconStats
 from .request import send_request
 from .honeypot import HoneypotAnalyzer
@@ -52,6 +54,11 @@ def validate_subdomain(sub, wildcard_baseline):
         https_keys = s.get("header") or []
         https_hash = s.get("body_hash")
 
+        print(f"[DEBUG] size h: {http_size}")
+        print(f"[DEBUG] size s: {https_size}")
+        ##Size filtering
+        if size_filtering(http_size, https_size):
+            return None, None, None
 
         ##Validate Wildcard
         baselines = wildcard_baseline
@@ -130,3 +137,21 @@ def humane_sleep(base_delay: float):
     else:
         time.sleep(random.uniform(0.1, 0.5))
 
+def size_filtering(http_size: int = 0, https_size: int = 0) -> bool:
+    config = scan_config.current
+
+    max_size = config.max_size
+    min_size = config.min_size
+
+    if isinstance(http_size, bytes):
+        http_size = len(http_size)
+    if isinstance(https_size, bytes):
+        https_size = len(https_size)
+
+    if min_size is not None and min_size > -1:
+        if (http_size <= 0 or http_size < min_size) and (https_size <= 0 or https_size < min_size):
+            return True
+    if max_size is not None and max_size > 0:
+        if (http_size <= 0 or http_size > max_size) and (https_size <= 0 or https_size > max_size):
+            return True
+    return False
