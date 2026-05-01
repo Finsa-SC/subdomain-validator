@@ -19,5 +19,7 @@ class ScanConfig:
     all_resource: bool
     color: bool
     honeypot: bool
+    max_size: int
+    min_size: int
 
 current: 'ScanConfig' = None

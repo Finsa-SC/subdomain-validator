@@ -75,6 +75,8 @@ def main():
     filter_group.add_argument("-q", "--quiet", action="store_true", help="Show clean output (only 200 status)")
     filter_group.add_argument("--ip", action="store_true", help="Show IP address instead of subdomain")
     filter_group.add_argument("--color", action="store_true", help="Color output text")
+    filter_group.add_argument("--min-size", type=int, help="Filter response larger than N bytes")
+    filter_group.add_argument("--max-size", type=int, help="Filter response larger than N bytes")
 
     # 5. EXPORT OPTIONS
     export_group = parser.add_argument_group('EXPORT OPTIONS')
@@ -115,7 +117,9 @@ def main():
         source=args.source,
         all_resource=args.all,
         color=args.color,
-        honeypot=args.honeypot
+        honeypot=args.honeypot,
+        max_size=args.max_size,
+        min_size=args.min_size
     )
     scan_config.current = config
 
