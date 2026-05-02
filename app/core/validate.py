@@ -1,21 +1,18 @@
 ##Module Function
-from operator import truediv
-
 from utils import sign, show_output, show_quiet, ReconStats
 from .request import send_request
 from .honeypot import HoneypotAnalyzer
-from models import scan_config
+from models import get_config
 
 ##Module Package
 import socket
-import requests
 import random
 import time
 
 stats = ReconStats()
 
 def validate_subdomain(sub, wildcard_baseline):
-    config = scan_config.current
+    config = get_config()
 
     if config.delay > 0:
         humane_sleep(config.delay)
@@ -120,9 +117,6 @@ def validate_subdomain(sub, wildcard_baseline):
             show_output(data, HoneypotAnalyzer)
         stats.log(http_status, https_status)
         return status_ok, ip_address, data
-
-    except requests.exceptions.RequestException:
-        return False, "No IP", None
     except Exception as e:
         print(f"Error: {sub} -> {e}")
         return False, "No IP", None

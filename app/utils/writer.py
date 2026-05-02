@@ -9,7 +9,7 @@ def check_results_dir():
     Path("results").mkdir(parents=True, exist_ok=True)
 
 def is_cloudflare(ip):
-    if not ip or ip != "No IP":
+    if not ip or ip == "No IP":
         return False
     ip_obj = ipaddress.ip_address(ip)
     for network in CLOUDFLARE_IPS:

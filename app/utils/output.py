@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Any, Mapping
 from urllib.parse import urlparse
-from utils import is_cloudflare
+from .writer import is_cloudflare
 from models import scan_config, TITLE_IGNORE
 
 # ANSI Colors (Soft/Standard)

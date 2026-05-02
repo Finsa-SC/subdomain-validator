@@ -1,8 +1,13 @@
+from dataclasses import dataclass
+
+@dataclass()
 class ReconStats:
-    def __init__(self):
-        super().__setattr__('allowed', ['ok', 'forbidden', 'ssl_error', 'server_error', 'dead'])
-        for name in self.allowed:
-            super().__setattr__(f"_{name}", 0)
+    ok: int = 0
+    forbidden: int = 0
+    ssl_error: int = 0
+    conn_error: int = 0
+    server_error: int = 0
+    dead: int = 0
 
     def log(self, http_status, https_status):
         code = [http_status, https_status]
@@ -25,19 +30,3 @@ class ReconStats:
         print(f"SSL Error    : {self.ssl_error}")
         print(f"Server Error : {self.server_error}")
         print(f"No Response  : {self.dead}")
-
-    def __setattr__(self, name, value):
-        if name in getattr(self, 'allowed', []):
-            current = getattr(self, f"{name}")
-
-            if value < 0 or value > current + 1:
-                print("[!] Alert: attempt to manipulate points")
-                return
-            super().__setattr__(f"_{name}", value)
-        else:
-            super().__setattr__(name, value)
-
-    def __getattr__(self, name):
-        if name in self.allowed:
-            return getattr(self, f"_{name}")
-        raise AttributeError

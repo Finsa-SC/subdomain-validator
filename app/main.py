@@ -3,10 +3,11 @@ from sys import stdin
 import fake_useragent
 
 from core import check_subdomain
-from models import scan_config
-from models import ScanConfig
+from models import set_config
 
 from dotenv import load_dotenv
+
+from models.scan_config import ScanConfig
 from utils import get_banner
 import os
 import tempfile
@@ -101,7 +102,7 @@ def main():
         print("[*] Workflow: Wildcard Baseline (2 req) -> Validation (HTTP & HTTPS)")
         print("-" * 60)
 
-    config = ScanConfig(
+    set_config(ScanConfig(
         timeout=args.timeout,
         thread=args.thread,
         available=args.available,
@@ -122,8 +123,7 @@ def main():
         max_size=args.max_size,
         min_size=args.min_size,
         dns=args.dns
-    )
-    scan_config.current = config
+    ))
 
     if args.redirect and not args.verbose:
         parser.error("redirect need verbose to show")

@@ -2,25 +2,43 @@ from dataclasses import dataclass
 
 @dataclass
 class ScanConfig:
-    timeout: float
-    thread: int
-    available: bool
-    verbose: bool
-    redirect: bool
-    no_wildcard: bool
-    quiet: bool
-    quiet_ip: bool
-    show_title: bool
-    show_tech: bool
-    save_file_plain: bool
-    save_file_json: bool
-    delay: float
-    source: str
-    all_resource: bool
-    color: bool
-    honeypot: bool
-    max_size: int
-    min_size: int
-    dns: str
+    # --- Required --- #
+    timeout: float = 3.0
+    thread: int = 5
+    delay: float = 0.0
 
-current: 'ScanConfig' = None
+    # --- Discovery --- #
+    source: str | None = None
+    all_resource: bool = False
+
+    # --- Filtering --- #
+    available: bool = False
+    no_wildcard: bool = False
+    min_size: int | None = None
+    max_size: int | None = None
+
+    # --- Filtering --- #
+    verbose: bool = False
+    redirect: bool = False
+    quiet: bool = False
+    quiet_ip: bool = False
+    show_title: bool = False
+    show_tech: bool = False
+    color: bool = False
+    honeypot: bool = False
+
+    # --- Save --- #
+    save_file_plain: bool = False
+    save_file_json: bool = False
+
+    # --- Dns --- #
+    dns: str | None = None
+
+_config = ScanConfig()
+
+def get_config() -> ScanConfig:
+    return _config
+
+def set_config(config: ScanConfig) -> None:
+    global _config
+    _config = config
