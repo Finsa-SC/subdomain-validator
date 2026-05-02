@@ -1,6 +1,6 @@
 from models import (HONEYPOT_TITLE, HONEYPOT_NAME, HONEYPOT_HASHES, HONEYPOT_SERVERS, OBSOLETE_VERSIONS,
     SUSPICIOUS_HEADER_ORDERS, SIGNAL_TIER, SIGNAL_WEIGHTS, CONFIDENCE_LABELS, HONEYPOT_HEADERS)
-from utils.save_file import is_cloudflare
+from utils import is_cloudflare
 
 import math
 

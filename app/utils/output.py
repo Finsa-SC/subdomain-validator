@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Any, Mapping
 from urllib.parse import urlparse
 from .writer import is_cloudflare
-from models import scan_config, TITLE_IGNORE
+from models import get_config, TITLE_IGNORE
 
 # ANSI Colors (Soft/Standard)
 RESET = "\033[0m"
@@ -25,7 +25,7 @@ def print_legend():
         """)
 
 def sign(http_status, https_status, is_wildcard) -> str:
-    config = scan_config.current
+    config = get_config()
     if is_wildcard:
         return colorize("[?]", CYAN if config.color else WHITE)
     elif http_status == 200 or https_status == 200:
@@ -61,7 +61,7 @@ def show_verbose(http_status, https_status, show_redir=False, http_redir=None, h
     return ""
 
 def show_output(data: Mapping[str, Any], honeypotAnalyze):
-    config = scan_config.current
+    config = get_config()
 
     http = data.get("http", {})
     https = data.get("https", {})

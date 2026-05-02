@@ -1,7 +1,7 @@
 ##Module Function
 from utils import sign, show_output, show_quiet, ReconStats
 from .request import send_request
-from .honeypot import HoneypotAnalyzer
+from analysis import HoneypotAnalyzer
 from models import get_config
 
 ##Module Package
@@ -122,7 +122,7 @@ def validate_subdomain(sub, wildcard_baseline):
         return False, "No IP", None
 
 def humane_sleep(base_delay: float):
-    config = scan_config.current
+    config = get_config()
 
     if config.delay > 0:
         jitter = base_delay * 0.25
@@ -132,7 +132,7 @@ def humane_sleep(base_delay: float):
         time.sleep(random.uniform(0.1, 0.5))
 
 def size_filtering(http_size: int = 0, https_size: int = 0) -> bool:
-    config = scan_config.current
+    config = get_config()
 
     max_size = config.max_size
     min_size = config.min_size

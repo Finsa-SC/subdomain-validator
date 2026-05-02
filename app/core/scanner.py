@@ -1,6 +1,6 @@
 from typing import Any
 
-from models import scan_config
+from models import get_config
 from sources import get_subdomain
 from utils import save_file_healthy, save_file_problem, save_file_as_json, print_legend
 from concurrent.futures import ThreadPoolExecutor
@@ -13,7 +13,7 @@ import tldextract
 import os
 
 def check_subdomain(domain: str):
-    config = scan_config.current
+    config = get_config()
     healthy_ip = set()
     problem_ip = set()
 
@@ -77,7 +77,7 @@ def check_subdomain(domain: str):
         exit(0)
 
 def check_wildcard(domain: str):
-    config = scan_config.current
+    config = get_config()
     wild_sub = f"{os.urandom(2).hex()}.{domain}"
     baselines = {"http": None, "https": None}
 
@@ -103,7 +103,7 @@ def get_domain_root(full_domain: str):
     return f"{root.domain}.{root.suffix}"
 
 def create_metadata(domain: str) -> dict[str, Any]:
-    config = scan_config.current
+    config = get_config()
     metadata = {
         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "domain": domain,
