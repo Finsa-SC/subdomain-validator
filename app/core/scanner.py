@@ -1,6 +1,6 @@
+import time
 from typing import Any
 from datetime import datetime
-import time
 import tldextract
 import os
 import itertools
@@ -8,7 +8,7 @@ import itertools
 from models import get_config
 from sources import get_subdomain
 from utils import save_file_healthy, save_file_problem, save_file_as_json, print_legend
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, as_completed, FIRST_COMPLETED, wait
 from .validate import validate_subdomain, stats
 from .request import send_request
 
@@ -53,36 +53,36 @@ def check_subdomain(domain: str):
 
     try:
         with ThreadPoolExecutor(max_workers=config.thread) as executor:
-            MAX_INFLIGHT = config.thread * 4
-            futures = {}
+            futures = {
+                executor.submit(validate_subdomain, sub, wildcard_baseline): sub
+                for sub in itertools.islice(subdomain_iter, config.thread * 4)
+            }
 
-            for sub in itertools.islice(subdomain_iter, MAX_INFLIGHT):
-                f = executor.submit(validate_subdomain, sub, wildcard_baseline)
-                futures[f] = sub
+            while futures:
+                done, _ = wait(futures.keys(), return_when=FIRST_COMPLETED)
 
-            for future in as_completed(futures):
-                futures.pop(future)
+                for future in done:
+                    try:
+                        is_ok, ip, dict_sub = future.result()
+                        if ip and ip != "No IP":
+                            if is_ok:
+                                healthy_ip.add(ip)
+                            else:
+                                problem_ip.add(ip)
+                        if dict_sub:
+                            sub_list.append(dict_sub)
+                    except Exception as e:
+                        print(f"[x] Error: {e}")
 
-                next_sub = next(subdomain_iter, None)
-                if next_sub:
-                    f = executor.submit(validate_subdomain, next_sub, wildcard_baseline)
-                    futures[f] = next_sub
+                    del futures[future]
 
-                    if config.delay:
-                        time.sleep(config.delay)
-                try:
-                    is_ok, ip, dict_sub = future.result()
-                except Exception as e:
-                    print(f"[x] Error: {e}")
-                    continue
+                    next_sub = next(subdomain_iter, None)
+                    if next_sub:
+                        new_f = executor.submit(validate_subdomain, next_sub, wildcard_baseline)
+                        futures[new_f] = next_sub
 
-                if ip and ip != "No IP":
-                    if is_ok:
-                        healthy_ip.add(ip)
-                    else:
-                        problem_ip.add(ip)
-                if dict_sub:
-                    sub_list.append(dict_sub)
+                        if config.delay:
+                            time.sleep(config.delay)
 
         if config.save_file_plain:
             save_file_healthy(domain_root, healthy_ip)
