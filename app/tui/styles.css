@@ -1,0 +1,70 @@
+Screen {
+    background: $background;
+}
+
+#filter-input {
+    dock: top;
+    height: 3;
+    border: solid $accent;
+    margin: 0 1;
+}
+
+#filter-input:focus {
+    border: solid $success;
+}
+
+#main-container {
+    height: 1fr;
+    layout: horizontal;
+}
+
+#subdomain-table {
+    width: 1fr;
+    border: solid $primary;
+}
+
+#detail-panel {
+    width: 40;
+    border: solid $warning;
+    display: none;
+}
+
+#detail-panel.visible {
+    display: block;
+}
+
+#stats-bar {
+    dock: bottom;
+    height: 3;
+    background: $panel;
+    border-top: solid $primary;
+}
+
+DataTable {
+    height: 1fr;
+}
+
+DataTable > .datatable--cursor {
+    background: $accent 20%;
+}
+
+.status-live {
+    color: $success;
+}
+
+.status-forbidden {
+    color: $error;
+}
+
+.status-redirect {
+    color: $warning;
+}
+
+.status-dead {
+    color: $text-disabled;
+}
+
+.status-honeypot {
+    color: $warning;
+    text-style: bold;
+}
