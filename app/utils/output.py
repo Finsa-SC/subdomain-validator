@@ -92,6 +92,13 @@ def show_output(data: Mapping[str, Any], honeypotAnalyze):
     show_tech = config.show_tech
     show_honeypot = config.honeypot
     show_available = config.available
+    show_live = config.live
+
+    is_live = 200 in [h_status, s_status]
+    is_up = any(
+        isinstance(c, int)
+        for c in [h_status, s_status]
+    )
 
     # Set Color
     if not config.color:
@@ -129,9 +136,15 @@ def show_output(data: Mapping[str, Any], honeypotAnalyze):
             output_buffer.extend([colorize(t, suggested_color if suggested_color else color) for t in honeypot])
 
     if server is not None:
-        if (200 in [h_status, s_status]) or not show_available:
+        should_print = (
+            not show_available and not show_live
+            or (show_live and is_live)
+            or (show_available and is_up)
+        )
+        if should_print:
             print("\n".join(output_buffer))
-            return 200 in [h_status, s_status], ip_address
+
+        return is_up, ip_address
     return False, "No IP"
 
 

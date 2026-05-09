@@ -50,6 +50,9 @@ def check_subdomain(domain: str):
     if not config.quiet:
         print(print_legend())
 
+    counting = CountTime()
+    counting.start()
+
     try:
         with ThreadPoolExecutor(max_workers=config.thread) as executor:
             futures = {
@@ -82,6 +85,7 @@ def check_subdomain(domain: str):
 
                         if config.delay:
                             time.sleep(config.delay)
+        counting.end()
 
         if config.save_file_plain:
             save_file_healthy(domain_root, healthy_ip)
@@ -91,8 +95,7 @@ def check_subdomain(domain: str):
             save_file_as_json(domain_root, sub_list, metadata)
 
         if not config.quiet:
-            stats.summary()
-            print(f"[+] Found {len(sub_list)} potential hosts, starting validation\n")
+            stats.summary(counting.total)
 
     except KeyboardInterrupt:
         print("\n[!]Process stop by user...")
@@ -137,3 +140,18 @@ def create_metadata(domain: str) -> dict[str, Any]:
         "thread_used": config.thread,
     }
     return metadata
+
+class CountTime:
+    def __init__(self):
+        self.start_time = None
+        self.end_time = None
+
+    def start(self):
+        self.start_time = datetime.now()
+
+    def end(self):
+        self.end_time = datetime.now()
+
+    @property
+    def total(self):
+        return (self.end_time - self.start_time).total_seconds()

@@ -115,6 +115,7 @@ def validate_subdomain(sub, wildcard_baseline):
             show_quiet(is_okay=status_ok, sub=sub, ip=ip_address, show_ip=config.quiet_ip)
         else:
             show_output(data, HoneypotAnalyzer)
+
         stats.log(http_status, https_status)
         return status_ok, ip_address, data
     except Exception as e:

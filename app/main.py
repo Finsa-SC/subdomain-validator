@@ -73,6 +73,7 @@ def main():
     # 4. OUTPUT FILTERING
     filter_group = parser.add_argument_group('OUTPUT FILTERING')
     filter_group.add_argument("-A", "--available", action="store_true", help="Only show domain with 200 status code")
+    filter_group.add_argument("-L","--live", action="store_true", help="Only show domain with 200 status code")
     filter_group.add_argument("-w", "--no-wildcard", action="store_true", help="Skip if wildcard DNS detected")
     filter_group.add_argument("-q", "--quiet", action="store_true", help="Show clean output (only 200 status)")
     filter_group.add_argument("--ip", action="store_true", help="Show IP address instead of subdomain")
@@ -122,7 +123,8 @@ def main():
         honeypot=args.honeypot,
         max_size=args.max_size,
         min_size=args.min_size,
-        dns=args.dns
+        dns=args.dns,
+        live=args.live
     ))
 
     if args.redirect and not args.verbose:

@@ -13,11 +13,12 @@ class ScanConfig:
 
     # --- Filtering --- #
     available: bool = False
+    live: bool = False
     no_wildcard: bool = False
     min_size: int | None = None
     max_size: int | None = None
 
-    # --- Filtering --- #
+    # --- Information --- #
     verbose: bool = False
     redirect: bool = False
     quiet: bool = False
