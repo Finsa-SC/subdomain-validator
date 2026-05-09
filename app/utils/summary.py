@@ -41,7 +41,7 @@ class ReconStats:
             else:
                 self.other += 1
 
-    def summary(self):
+    def summary(self, time_scan):
         host_up = (self.ok +
                    self.forbidden +
                    self.server_error +
@@ -71,4 +71,4 @@ class ReconStats:
             if total > 0:
                 print(f"{title: <15}: {total}")
 
-        print(f"\n\nTotal Host Scanned: {total_scan}")
+        print(f"\n\nTotal Host Scanned: {total_scan}, scanned in {time_scan} seconds")
