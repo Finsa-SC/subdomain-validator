@@ -92,7 +92,6 @@ def check_subdomain(domain: str):
 
         if not config.quiet:
             stats.summary()
-            print(f"[+] Found {len(sub_list)} potential hosts, starting validation\n")
 
     except KeyboardInterrupt:
         print("\n[!]Process stop by user...")
