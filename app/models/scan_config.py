@@ -11,27 +11,6 @@ class ScanConfig:
     source: str | None = None
     all_resource: bool = False
 
-    # --- Filtering --- #
-    available: bool = False
-    live: bool = False
-    no_wildcard: bool = False
-    min_size: int | None = None
-    max_size: int | None = None
-
-    # --- Information --- #
-    verbose: bool = False
-    redirect: bool = False
-    quiet: bool = False
-    quiet_ip: bool = False
-    show_title: bool = False
-    show_tech: bool = False
-    color: bool = False
-    honeypot: bool = False
-
-    # --- Save --- #
-    save_file_plain: bool = False
-    save_file_json: bool = False
-
     # --- Dns --- #
     dns: str | None = None
 

@@ -7,8 +7,7 @@ import itertools
 
 from models import get_config
 from sources import get_subdomain
-from utils import save_file_healthy, save_file_problem, save_file_as_json, print_legend
-from concurrent.futures import ThreadPoolExecutor, as_completed, FIRST_COMPLETED, wait
+from concurrent.futures import ThreadPoolExecutor, FIRST_COMPLETED, wait
 from .validate import validate_subdomain, stats
 from .request import send_request
 

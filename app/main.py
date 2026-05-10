@@ -55,32 +55,6 @@ def main():
     config_group.add_argument("-all", action="store_true", help="Use all available resources for scanning")
     config_group.add_argument("--dns", type=str, help="Custom DNS provider (cloudflare, google, quad9, opendns) or IP")
 
-    # 3. PROFILING & ANALYSIS
-    profile_group = parser.add_argument_group('PROFILING & ANALYSIS')
-    profile_group.add_argument("-v", "--verbose", action="store_true", help="Show information more detail")
-    profile_group.add_argument("-t", "--title", action="store_true", help="Print page title")
-    profile_group.add_argument("-x", "--header-tech", action="store_true", help="Show subdomain tech from header")
-    profile_group.add_argument("-r", "--redirect", action="store_true", help="Show redirect information")
-    profile_group.add_argument("--honeypot", action="store_true", help="Enable smart fingerprinting")
-    profile_group.add_argument("-a", "--aggressive", action="store_true",
-                               help="Enable all informative flags (-v, -t, -x, etc.)")
-
-    # 4. OUTPUT FILTERING
-    filter_group = parser.add_argument_group('OUTPUT FILTERING')
-    filter_group.add_argument("-A", "--available", action="store_true", help="Only show domain with 200 status code")
-    filter_group.add_argument("-L", "--live", action="store_true", help="Only show domain with 200 status code")
-    filter_group.add_argument("-w", "--no-wildcard", action="store_true", help="Skip if wildcard DNS detected")
-    filter_group.add_argument("-q", "--quiet", action="store_true", help="Show clean output (only 200 status)")
-    filter_group.add_argument("--ip", action="store_true", help="Show IP address instead of subdomain")
-    filter_group.add_argument("--color", action="store_true", help="Color output text")
-    filter_group.add_argument("--min-size", type=int, help="Filter response smaller than N bytes")
-    filter_group.add_argument("--max-size", type=int, help="Filter response larger than N bytes")
-
-    # 5. EXPORT OPTIONS
-    export_group = parser.add_argument_group('EXPORT OPTIONS')
-    export_group.add_argument("-o", "--output", action="store_true", help="Save result as plain list")
-    export_group.add_argument("-oJ", "--output-json", action="store_true", help="Save result as JSON with detail")
-
     parser.add_argument("-V", "--version", action="version", version=f"subf {VERSION}")
 
     if len(sys.argv) == 1:
