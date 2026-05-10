@@ -4,12 +4,7 @@ from datetime import datetime
 import tldextract
 import os
 import itertools
-from rich.progress import Progress, SpinnerColumn, BarColumn, TaskProgressColumn, TextColumn, MofNCompleteColumn, TimeElapsedColumn
 from rich.console import Console
-from rich.live import Live
-from rich.text import Text
-from rich.panel import Panel
-from rich.table import Table
 
 from models import get_config
 from sources import get_subdomain
@@ -19,10 +14,6 @@ from .request import send_request
 
 def check_subdomain_tui(domain: str, callback):
     config = get_config()
-
- #===============================DEBUG======================================
-    with open("/tmp/debug.log", "a") as f:
-        f.write(f"[scanner] start, domain={domain}\n")
 
     if os.path.isfile(domain):
         def _file_gen():
@@ -49,8 +40,6 @@ def check_subdomain_tui(domain: str, callback):
     counting.start()
 
     console = Console()
-    processed = 0
-
     console.print()
 
     try:
@@ -67,32 +56,25 @@ def check_subdomain_tui(domain: str, callback):
                     try:
                         is_ok, ip, dict_sub = future.result()
 
-                        if dict_sub is not None:
+                        if dict_sub:
                             dict_sub["is_live"] = is_ok
+
                             dict_sub["server"] = (
                                 dict_sub.get("https", {}).get("server") or
                                 dict_sub.get("http", {}).get("server") or
                                 "Unknown"
                             )
 
-                            if config.honeypot:
-                                from analysis import HoneypotAnalyzer
+                            from analysis import HoneypotAnalyzer
 
-                                analyzer = HoneypotAnalyzer(dict_sub, config)
-                                score, label, _ = analyzer.run_all()
-                                dict_sub["is_honeypot"] = score > 0.5
-                                dict_sub["honeypot_score"] = score
-                                dict_sub["honeypot_label"] = label
-                        else:
-                            dict_sub["is_honeypot"] = False
-                            dict_sub["honeypot_score"] = 0
-                            dict_sub["honeypot_label"] = "N/A"
+                            analyzer = HoneypotAnalyzer(dict_sub, config)
+                            score, label, findings = analyzer.run_all()
+                            dict_sub["is_honeypot"] = score > 0.5
+                            dict_sub["honeypot_score"] = score
+                            dict_sub["honeypot_label"] = label
+                            dict_sub["honeypot_findings"] = findings
 
                         callback(dict_sub)
-
-                        # ===============================DEBUG======================================
-                        with open("/tmp/debug.log", "a") as f:
-                            f.write(f"[scanner] callback fired: {dict_sub.get('subdomain')}\n")
                     except Exception:
                         pass
 

@@ -48,19 +48,25 @@ class SubdomainTable(DataTable):
 
     @staticmethod
     def get_status_icon(result):
+        if result.get("wildcard"):
+            return Text("◈", style="#00E0FF")
+
+        score = result.get("honeypot_score", 0)
+        if score > 0.5:
+            color = "#F7768E" if score >= 0.75 else "#FFD700"
+            return Text("🍯", style=color)
+
         h_status = result.get("http", {}).get("status")
         s_status = result.get("https", {}).get("status")
 
-        if result.get("is_honeypot"):
-            return Text("⚠️", style="#F7768E")
         if h_status == 200 or s_status == 200:
-            return Text("✅", style="#73DACA")
-        elif h_status in [401, 402, 403] or s_status == [401, 402, 403]:
-            return Text("🚫", style="F7768E")
+            return Text("◈", style="#73DACA")
+        elif h_status in [401, 402, 403] or s_status in [401, 402, 403]:
+            return Text("◈", style="#F7768E")
         elif h_status in [301, 302, 307] or s_status in [301, 302, 307]:
-            return Text("↻", style="#BB9AF7")
+            return Text("◈", style="#BB9AF7")
         else:
-            return Text("❌", style="#565F89")
+            return Text("◈", style="#565F89")
 
     @staticmethod
     def truncate(text, max_len):

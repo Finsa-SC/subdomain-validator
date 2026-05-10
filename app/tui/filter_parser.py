@@ -44,12 +44,21 @@ class FilterParser:
                 if target not in server:
                     return False
 
-        if 'honeypot:true' in query:
-            if not result.get("is_honeypot"):
-                return False
-        if 'honeypot:false' in query:
-            if result.get("is_honeypot"):
-                return False
+        if 'honeypot:' in query:
+            match = re.search(r'honeypot:(\w+)', query)
+            if match:
+                target = match.group(1)
+                score = result.get("honeypot_score", 0)
+                label = result.get("honeypot_label", "Unlikely").lower()
+                if target == 'true':
+                    if score < 0.5:
+                        return False
+                if target == 'false':
+                    if score >= 0.5:
+                        return False
+                else:
+                    if label != target:
+                        return False
 
         if 'subdomain:' in query:
             match = re.search(r'subdomain:(\S+)', query)
