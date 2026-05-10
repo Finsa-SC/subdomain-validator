@@ -19,29 +19,21 @@ def check_subdomain_tui(domain: str, config, callback):
     problem_ip = set()
 
     if os.path.isfile(domain):
-        if not config.quiet:
-            print("validate as file")
-
         def _file_gen():
             with open(domain, "r") as file:
                 for line in file:
                     s = line.strip()
                     if s and not s.startswith("#"):
                         yield s
-
         subdomain_iter = _file_gen()
     elif "." in domain and not domain.endswith(".txt"):
-        if not config.quiet:
-            print(f"Search for subdomain for {domain}")
         subdomain_iter = iter(get_subdomain(domain, config.all_resource, config.source))
     else:
-        print("[x] Invalid domain or file path!")
-        exit(0)
+        return
 
     first_sub = next(subdomain_iter, None)
     if not first_sub:
-        print(f"[x] No subdomain found!!")
-        exit(0)
+        return
 
     domain_root = get_domain_root(first_sub)
     wildcard_baseline = check_wildcard(domain_root)
@@ -83,10 +75,12 @@ def check_subdomain_tui(domain: str, config, callback):
                             dict_sub["honeypot_score"] = score
                             dict_sub["honeypot_label"] = label
                         else:
-                            dict_sub["is_honeypot"] = score > 0.5
+                            dict_sub["is_honeypot"] = False
+                            dict_sub["honeypot_score"] = 0
+                            dict_sub["honeypot_label"] = "N/A"
 
                         callback(dict_sub)
-                    except Exception as e:
+                    except Exception:
                         pass
 
                     del futures[future]

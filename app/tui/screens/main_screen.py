@@ -39,12 +39,12 @@ class MainScreen(Screen):
     def compose(self):
         yield Input(
             placeholder="Filter: status:200, server:nginx, NOT status:404",
-            id="filter-output"
+            id="filter-input"
         )
         with Container(id="main-container"):
             yield SubdomainTable(id="subdomain-table")
             yield DetailPanel(id="detail-panel")
-        yield StatsBar(id="status-bar")
+        yield StatsBar(id="stats-bar")
 
     def on_mount(self):
         self.start_scan()
@@ -62,10 +62,12 @@ class MainScreen(Screen):
         thread = threading.Thread(target=scan_worker, daemon=True)
         thread.start()
 
-    def on_subdomain_found(self, result):
-        self.results = result
-        self.apply_filter()
-        self.update_stats
+    def on_subdomain_found(self, results):
+        def update_ui():
+            self.results.append(results)
+            self.apply_filter()
+            self.update_stats()
+        self.call_from_thread(update_ui)
 
     def on_input_changed(self, event: Input.Changed):
         if event.input.id == "filter-input":

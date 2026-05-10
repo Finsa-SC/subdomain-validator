@@ -2,6 +2,9 @@ from textual.widgets import DataTable
 from rich.text import Text
 
 class SubdomainTable(DataTable):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.result_mapping = []
     def on_mount(self):
         self.cursor_type = "row"
         self.zebra_stripes = True
@@ -14,6 +17,7 @@ class SubdomainTable(DataTable):
 
     def update_data(self, results):
         self.clear()
+        self.result_mapping = list(results)
 
         for r in results:
             icon = self.get_status_icon(r)
@@ -27,9 +31,10 @@ class SubdomainTable(DataTable):
 
             self.add_row(icon, subdomain, ip, server, status)
 
-    def get_status_icon(self, result):
+    @staticmethod
+    def get_status_icon(result):
         h_status = result.get("http", {}).get("status")
-        s_status = result.get("shttp", {}).get("status")
+        s_status = result.get("https", {}).get("status")
 
         if result.get("is_honeypot"):
             return Text("⚠️", style="bold yellow")
@@ -42,12 +47,13 @@ class SubdomainTable(DataTable):
         else:
             return Text("❌", style="dim")
 
-    def truncate(self, text, max_len):
+    @staticmethod
+    def truncate(text, max_len):
         if max_len >= len(text):
             return text
         return text[:max_len-3] + "..."
 
     def get_selected_row(self):
         if self.cursor_row is not None and self.cursor_row < len(self.rows):
-            return None
+            return self.result_mapping[self.cursor_row]
         return None

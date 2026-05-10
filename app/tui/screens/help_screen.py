@@ -6,7 +6,7 @@ from rich.table import Table
 
 class HelpScreen(ModalScreen):
     BINDINGS = [
-        Binding("escape", "dismis", "Close"),
+        Binding("escape", "dismiss", "Close"),
         Binding("f1", "dismis", "Close")
     ]
 

@@ -8,7 +8,7 @@ class FilterParser:
         filtered = []
 
         for result in results:
-            if re.match(query, result):
+            if self.matches(query, result):
                 filtered.append(result)
 
         return filtered
