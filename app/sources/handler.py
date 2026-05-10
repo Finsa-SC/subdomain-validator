@@ -17,7 +17,6 @@ def get_subdomain(domain: str, use_all: bool = False, selected_source: str = Non
 
     for s_name in to_run:
         if s_name in source_map:
-            print(f"[C] Fetching from {s_name}")
             for sub in source_map[s_name](domain):
                 if sub not in seen:
                     seen.add(sub)

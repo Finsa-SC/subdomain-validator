@@ -14,10 +14,10 @@ from rich.table import Table
 from models import get_config
 from sources import get_subdomain
 from concurrent.futures import ThreadPoolExecutor, FIRST_COMPLETED, wait
-from .validate import validate_subdomain, stats
+from .validate import validate_subdomain
 from .request import send_request
 
-def check_subdomain_tui(domain: str, config, callback):
+def check_subdomain_tui(domain: str, callback):
     config = get_config()
 
  #===============================DEBUG======================================

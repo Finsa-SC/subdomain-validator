@@ -26,8 +26,8 @@ class SubdomainTable(DataTable):
             ip = r.get("ip_address", "No IP")
             server = self.truncate(r.get("server", "Unknown"), 10)
 
-            h_status = r.get("http", {}).get("status", "-")
-            s_status = r.get("https", {}).get("status", "-")
+            h_status = _normalize_status(r.get("http", {}).get("status"))
+            s_status = _normalize_status(r.get("https", {}).get("status"))
             status = f"{h_status}/{s_status}"
 
             self.add_row(icon, subdomain, ip, server, status)
@@ -41,8 +41,9 @@ class SubdomainTable(DataTable):
         subdomain = self.truncate(r.get("subdomain", ""), 38)
         ip = r.get("ip_address", "No IP")
         server = self.truncate(r.get("server", "Unknown"), 10)
-        h_status = r.get("http", {}).get("status", "-")
-        s_status = r.get("https", {}).get("status", "-")
+        h_status = _normalize_status(r.get("http", {}).get("status"))
+        s_status = _normalize_status(r.get("https", {}).get("status"))
+
         self.add_row(icon, subdomain, ip, server, f"{h_status}/{s_status}")
 
     @staticmethod
@@ -51,15 +52,15 @@ class SubdomainTable(DataTable):
         s_status = result.get("https", {}).get("status")
 
         if result.get("is_honeypot"):
-            return Text("⚠️", style="bold yellow")
+            return Text("⚠️", style="#F7768E")
         if h_status == 200 or s_status == 200:
-            return Text("✅", style="green")
-        elif h_status == 403 or s_status == 403:
-            return Text("🚫", style="red")
+            return Text("✅", style="#73DACA")
+        elif h_status in [401, 402, 403] or s_status == [401, 402, 403]:
+            return Text("🚫", style="F7768E")
         elif h_status in [301, 302, 307] or s_status in [301, 302, 307]:
-            return Text("↻", style="yellow")
+            return Text("↻", style="#BB9AF7")
         else:
-            return Text("❌", style="dim")
+            return Text("❌", style="#565F89")
 
     @staticmethod
     def truncate(text, max_len):
@@ -71,3 +72,9 @@ class SubdomainTable(DataTable):
         if self.cursor_row is not None and self.cursor_row < len(self.rows):
             return self.result_mapping[self.cursor_row]
         return None
+
+
+def _normalize_status(status):
+    if isinstance(status, int):
+        return status
+    return "-"

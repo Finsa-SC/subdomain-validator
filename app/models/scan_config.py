@@ -11,9 +11,20 @@ class ScanConfig:
     source: str | None = None
     all_resource: bool = False
 
+    # ---Filter--- #
+    no_wildcard: bool = False
+    min_size: int | None = None
+    max_size: int | None = None
+
+    # --- Honeypot --- #
+    honeypot: bool = False
+
     # --- Dns --- #
     dns: str | None = None
 
+    # --- Save --- #
+    save_file_plain: bool = False
+    save_file_json: bool = False
 _config = ScanConfig()
 
 def get_config() -> ScanConfig:

@@ -1,7 +1,9 @@
 import re
 import requests
+from utils import get_logger
 
 def fetch_rapiddns(domain: str):
+    log = get_logger("rapiddns")
     subdomains = set()
     url = f"https://rapiddns.io/subdomain/{domain}?full=1"
 
@@ -17,6 +19,6 @@ def fetch_rapiddns(domain: str):
             if sub:
                 yield sub
     except requests.exceptions.Timeout:
-        print(f"[x] RapidDns: Request timeout...")
+        log.error("Request timeout")
     except requests.exceptions.RequestException as e:
-        print(f"[x] RapidDns: {e}")
+        log.error(f"{e}")

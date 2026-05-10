@@ -1,5 +1,6 @@
 from .stealth import StealthMode
 from models import DNS_PROVIDERS
+from utils import get_logger
 
 from curl_cffi import requests
 import html
@@ -11,6 +12,7 @@ import dns.resolver
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 stealth = StealthMode()
+log = get_logger("request")
 
 def send_request(proto: str ,sub: str, time_out: float, custom_dns: str = None) -> dict:
     try:
@@ -60,7 +62,7 @@ def send_request(proto: str ,sub: str, time_out: float, custom_dns: str = None) 
             return {"status": "SSL_ERR"}
         return {"status": "CONN_ERR"}
     except Exception as e:
-        # print(f"[DEBUG] Error detail for {sub}: {type(e).__name__} - {e}")
+        log.error(f"[DEBUG] Error detail for {sub}: {type(e).__name__} - {e}")
         return {"status": "CONN_ERR"}
 
 def get_html_title(res):

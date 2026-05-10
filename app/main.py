@@ -3,7 +3,6 @@ from models import set_config
 from dotenv import load_dotenv
 
 from models.scan_config import ScanConfig
-from utils import get_banner
 import os
 import tempfile
 import argparse
@@ -33,7 +32,7 @@ def main():
             print(f"[x] Failed reading pipe data: {e}")
             sys.exit(1)
 
-    banner = get_banner()
+    banner = ""
     parser = argparse.ArgumentParser(
         prog="subv",
         description=f"{banner}\nSubdomain recon tool - FinSky IT Solutions",
@@ -55,6 +54,26 @@ def main():
     config_group.add_argument("-all", action="store_true", help="Use all available resources for scanning")
     config_group.add_argument("--dns", type=str, help="Custom DNS provider (cloudflare, google, quad9, opendns) or IP")
 
+    # 3. OUTPUT FILTERING
+    filter_group = parser.add_argument_group('OUTPUT FILTERING')
+    filter_group.add_argument("-A", "--available", action="store_true", help="Only show domain with 200 status code")
+    filter_group.add_argument("-L", "--live", action="store_true", help="Only show domain with 200 status code")
+    filter_group.add_argument("-w", "--no-wildcard", action="store_true", help="Skip if wildcard DNS detected")
+    filter_group.add_argument("--ip", action="store_true", help="Show IP address instead of subdomain")
+    filter_group.add_argument("--color", action="store_true", help="Color output text")
+    filter_group.add_argument("--min-size", type=int, help="Filter response smaller than N bytes")
+    filter_group.add_argument("--max-size", type=int, help="Filter response larger than N bytes")
+
+    # 4. EXPORT OPTIONS
+    export_group = parser.add_argument_group('EXPORT OPTIONS')
+    export_group.add_argument("-o", "--output", action="store_true", help="Save result as plain list")
+    export_group.add_argument("-oJ", "--output-json", action="store_true", help="Save result as JSON with detail")
+
+
+    # 3. PROFILING & ANALYSIS
+    profile_group = parser.add_argument_group('PROFILING & ANALYSIS')
+    profile_group.add_argument("--honeypot", action="store_true", help="Enable smart fingerprinting")
+
     parser.add_argument("-V", "--version", action="version", version=f"subf {VERSION}")
 
     if len(sys.argv) == 1:
@@ -63,36 +82,19 @@ def main():
 
     args = parser.parse_args()
 
-    if args.aggressive:
-        args.verbose = args.title = args.header_tech = args.redirect = args.honeypot = True
-
-    if args.redirect and not args.verbose:
-        parser.error("redirect need verbose to show")
-    if args.ip and not args.quiet:
-        parser.error("Ip need quiet to show")
-
     config = ScanConfig(
         timeout=args.timeout,
         thread=args.thread,
-        available=args.available,
-        verbose=args.verbose,
-        redirect=args.redirect,
         no_wildcard=args.no_wildcard,
-        quiet=args.quiet,
-        quiet_ip=args.ip,
-        show_title=args.title,
-        show_tech=args.header_tech,
         save_file_plain=args.output,
         save_file_json=args.output_json,
         delay=args.delay,
         source=args.source,
         all_resource=args.all,
-        color=args.color,
         honeypot=args.honeypot,
         max_size=args.max_size,
         min_size=args.min_size,
         dns=args.dns,
-        live=args.live
     )
 
     set_config(config)
