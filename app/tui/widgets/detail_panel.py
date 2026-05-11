@@ -43,6 +43,10 @@ class DetailPanel(Static):
         s_redir = https.get("redir")
         h_st = http.get("status")
         s_st = https.get("status")
+        h_sz = http.get("size")
+        s_sz = https.get("size")
+        h_tech = _detect_tech(http.get("tech"))
+        s_tech = _detect_tech(https.get("tech"))
 
         h_st = _normalize_status(h_st)
         s_st = _normalize_status(s_st)
@@ -54,21 +58,24 @@ class DetailPanel(Static):
         detail_table.add_row("  Status:", str(h_st))
         detail_table.add_row("  Server:", http.get("server", "Unknown"))
         detail_table.add_row("  Latency:", f"{h_lat}ms" if h_lat is not None else "N/A")
+        detail_table.add_row("  Size:", f"{h_sz}B" if h_sz is not None else "0")
         detail_table.add_row("  Redirect to:", f"{h_redir}")
         detail_table.add_row("  Title:", http.get("title", "-"))
+        detail_table.add_row("  Tech:", ", ".join(h_tech[:3]))
 
         detail_table.add_row("", "")
         detail_table.add_row("[bold]HTTPS", "")
         detail_table.add_row("  Status:", str(s_st))
         detail_table.add_row("  Server:", https.get("server", "Unknown"))
         detail_table.add_row("  Latency:", f"{s_lat}ms" if s_lat is not None else "N/A")
+        detail_table.add_row("  Size:", f"{s_sz}B" if s_sz is not None else "0")
         detail_table.add_row("  Redirect to:", f"{s_redir}")
         detail_table.add_row("  Title:", https.get("title", "-"))
+        detail_table.add_row("  Tech:", ", ".join(s_tech[:3]))
 
 
         score = result.get("honeypot_score")
         if score is None:
-
             score = result.get("is_honeypot", 0)
             if isinstance(score, bool):
                 score = 1.0 if score else 0.0
@@ -108,6 +115,30 @@ class DetailPanel(Static):
             detail_table.add_row("Wildcard:", "")
 
         self.update(panel)
+
+def _detect_tech(headers: dict) -> list:
+    tech = []
+    if not headers:
+        return []
+
+    headers_str = str(headers).lower()
+
+    if "cloudflare" in headers_str or "cf-ray" in headers:
+        tech.append("cloudflare")
+
+    if "php" in headers_str:
+        tech.append("php")
+
+    if "wordpress" in headers_str:
+        tech.append("wordpress")
+
+    if "nginx" in headers_str:
+        tech.append("nginx")
+
+    if "laravel" in headers_str:
+        tech.append("laravel")
+
+    return list(set(tech))
 
 def _format_redirect(url: str, current_subdomain: str = "") -> str:
     if not url or url in ["-", None, "None", ""]:

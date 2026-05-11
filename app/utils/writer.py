@@ -1,4 +1,4 @@
-from models import CLOUDFLARE_IPS
+from models import PROXY_IPS
 from .logger import get_logger
 import hashlib
 import ipaddress
@@ -9,11 +9,11 @@ log = get_logger("writer")
 def check_results_dir():
     Path("results").mkdir(parents=True, exist_ok=True)
 
-def is_cloudflare(ip):
+def is_proxy(ip):
     if not ip or ip == "No IP":
         return False
     ip_obj = ipaddress.ip_address(ip)
-    for network in CLOUDFLARE_IPS:
+    for network in PROXY_IPS:
         if ip_obj in ipaddress.ip_network(network):
             return True
     return False
@@ -23,7 +23,7 @@ def save_file_healthy(domain: str, ip_sets: set[str]):
     file_name = Path("results") / f"{domain}_healthy_ip.txt"
     with open(file_name, "w") as file:
         for ip in ip_sets:
-            if not is_cloudflare(ip):
+            if not is_proxy(ip):
                 file.write(f"{ip}\n")
     log.error(f"Saved Healthy: {file_name}")
 
@@ -32,7 +32,7 @@ def save_file_problem(domain: str, ip_sets: set[str]):
     file_name = Path("results") / f"{domain}_problem_ip.txt"
     with open(file_name, "w") as file:
         for ip in ip_sets:
-            if not is_cloudflare(ip):
+            if not is_proxy(ip):
                 file.write(f"{ip}\n")
     log.error(f"Saved Problem {file_name}")
 
@@ -73,7 +73,7 @@ def save_file_as_json(domain: str , all_results, scan_metadata):
             continue
 
         ##Skip cloudflare
-        if is_cloudflare(item.get("ip_address")):
+        if is_proxy(item.get("ip_address")):
             continue
 
         ##Get wildcard

@@ -1,6 +1,5 @@
 from models import (HONEYPOT_TITLE, HONEYPOT_NAME, HONEYPOT_HASHES, HONEYPOT_SERVERS, OBSOLETE_VERSIONS,
-    SUSPICIOUS_HEADER_ORDERS, SIGNAL_TIER, SIGNAL_WEIGHTS, CONFIDENCE_LABELS, HONEYPOT_HEADERS)
-from utils import is_cloudflare
+    SUSPICIOUS_HEADER_ORDERS, SIGNAL_TIER, SIGNAL_WEIGHTS, CONFIDENCE_LABELS, HONEYPOT_HEADERS, KNOWN_PROXY_SERVERS)
 
 import math
 
@@ -33,10 +32,11 @@ class HoneypotAnalyzer:
         if note not in self.findings:
             self.findings.append(note)
 
-    def _is_cloudflare_host(self):
+    def _is_reverse_proxy(self):
         h_server = self.http.get("server", "").lower()
         s_server = self.https.get("server", "").lower()
-        return "cloudflare" in h_server or "cloudflare" in s_server
+        combined = f"{h_server} {s_server}"
+        return any(sig in combined for sig in KNOWN_PROXY_SERVERS)
 
     def _is_host_responsive(self):
         h_status = self.http.get("status")
@@ -81,15 +81,6 @@ class HoneypotAnalyzer:
                 self._add_signal("obsolete_version",
                                  f"Deliberately exposed obsolete version: '{h_server or s_server}'")
                 break
-
-        ip_addr = self.data.get("ip_address")
-        if ip_addr and ip_addr != "No IP":
-            try:
-                if is_cloudflare(self.data.get("ip_address", "")) and not self._is_cloudflare_host():
-                    self._add_signal("cloudflare_leak",
-                                     "Cloudflare IP but real backend exposed in server header")
-            except:
-                pass
 
     def check_response(self):
         h_hash = self.http.get("body_hash")
@@ -150,7 +141,7 @@ class HoneypotAnalyzer:
 
         h_200 = self.http.get("status") == 200
         s_200 = self.https.get("status") == 200
-        if h_200 and s_200 and h_hash and h_hash == s_hash and not self._is_cloudflare_host():
+        if h_200 and s_200 and h_hash and h_hash == s_hash and not self._is_reverse_proxy():
             self._add_signal("identical_body_both_proto",
                              "Identical body on HTTP and HTTPS (no redirect) — abnormal for real servers")
 

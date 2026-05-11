@@ -73,18 +73,84 @@ SUSPICIOUS_HEADER_ORDERS = [
     ["server", "x-powered-by", "x-honeypot"],
     ["x-aspnet-version", "x-powered-by", "server", "x-honeypot"],
 ]
-CLOUDFLARE_IPS = [
-    "173.245.48.0/20", "103.21.244.0/22", "103.22.200.0/22",
-    "103.31.4.0/22", "141.101.64.0/18", "108.162.192.0/18",
-    "190.93.240.0/20", "188.114.96.0/20", "197.234.240.0/22",
-    "198.41.128.0/17", "162.158.0.0/15", "104.16.0.0/13",
-    "104.24.0.0/14", "172.64.0.0/13", "131.0.72.0/22"
+
+PROXY_IPS = [
+    # Cloudflare
+    "173.245.48.0/20", "103.21.244.0/22", "103.22.200.0/22", "103.31.4.0/22", "141.101.64.0/18", "108.162.192.0/18",
+    "190.93.240.0/20", "188.114.96.0/20", "197.234.240.0/22", "198.41.128.0/17", "162.158.0.0/15", "104.16.0.0/13",
+    "104.24.0.0/14", "172.64.0.0/13", "131.0.72.0/22",
+
+    # Fastly
+    "151.101.0.0/16",
+    "146.75.0.0/16",
+
+    # Akamai
+    "23.0.0.0/12",
+    "23.32.0.0/11",
+    "96.6.0.0/15",
+
+    # Imperva / Incapsula
+    "45.64.64.0/22",
+    "107.154.0.0/16",
+    "199.83.128.0/21",
+    "198.143.32.0/19",
+
+    # AWS CloudFront
+    "13.32.0.0/15",
+    "13.224.0.0/14",
+    "18.64.0.0/14",
+    "52.46.0.0/18",
+    "54.182.0.0/16",
+
+    # Google CDN
+    "34.96.0.0/20",
+    "34.104.0.0/14",
+    "35.190.0.0/17",
+
+    # BunnyCDN
+    "89.187.160.0/19",
+
+    # QUIC.cloud
+    "77.75.76.0/23",
+
+    # Sucuri
+    "192.88.134.0/23",
+    "185.93.228.0/22",
+
+    # StackPath
+    "151.139.0.0/16",
+
+    # KeyCDN
+    "87.253.128.0/19",
+
+    # Azure Front Door
+    "147.243.0.0/16",
+
+    # Gcore CDN
+    "92.223.0.0/16",
+
+    # Edgecast / Verizon
+    "93.184.216.0/21",
+
+    # Alibaba Cloud CDN
+    "47.246.0.0/16",
+
+    # Tencent CDN
+    "43.152.0.0/13",
+
+    # DDOS-Guard
+    "185.129.100.0/22",
+
+    # CDN77
+    "169.150.192.0/18",
+
+    # Leaseweb CDN
+    "5.79.0.0/16",
 ]
 
 SIGNAL_WEIGHTS = {
     "hash_match":        0.95,
     "honeypot_header":   0.92,
-    "cloudflare_leak":   0.85,
     "server_sig_match":  0.82,
     "obsolete_version":  0.65,
     "identical_body_both_proto": 0.50,
@@ -97,7 +163,6 @@ SIGNAL_WEIGHTS = {
 SIGNAL_TIER = {
     "hash_match":       "critical",
     "honeypot_header":  "critical",
-    "cloudflare_leak":  "critical",
     "server_sig_match": "critical",
     "obsolete_version": "strong",
     "header_order":     "strong",
@@ -113,6 +178,20 @@ CONFIDENCE_LABELS = [
     (0.50, "Probable"),
     (0.25, "Possible"),
     (0.00, "Unlikely"),
+]
+
+KNOWN_PROXY_SERVERS = [
+    "cloudflare",
+    "cloudfront",
+    "akamai",
+    "fastly",
+    "sucuri",
+    "imperva",
+    "varnish",
+    "edgecast",
+    "stackpath",
+    "bunnycdn",
+    "cdn77",
 ]
 
 USER_AGENT_FALLBACK = [
