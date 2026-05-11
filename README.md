@@ -1,5 +1,17 @@
 # subdomain-validator
 
+> [!CAUTION]
+> **🚧 BIG REFACTOR IN PROGRESS 🚧**
+> 
+> This project is currently in the stage of a major overhaul (refactor). 
+> Some of the documentation below (features, flags, or folder structures) may no longer be relevant or have not been updated according to the latest code in the `main` branch.
+> 
+> **What changed?**
+> - Migrate the interface to **TUI (Terminal User Interface)** using the `Textual` library.
+> - Restructuring internal modules for better efficiency.
+> - CLI flag adjustment.
+
+
 <div align="center">
 
 ![Python](https://img.shields.io/badge/Python-3.10+-blue?style=flat-square&logo=python&logoColor=white)
