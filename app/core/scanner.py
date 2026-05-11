@@ -4,54 +4,43 @@ from datetime import datetime
 import tldextract
 import os
 import itertools
+from rich.console import Console
 
 from models import get_config
 from sources import get_subdomain
-from utils import save_file_healthy, save_file_problem, save_file_as_json, print_legend
-from concurrent.futures import ThreadPoolExecutor, as_completed, FIRST_COMPLETED, wait
-from .validate import validate_subdomain, stats
+from concurrent.futures import ThreadPoolExecutor, FIRST_COMPLETED, wait
+from .validate import validate_subdomain
 from .request import send_request
 
-def check_subdomain(domain: str):
+def check_subdomain_tui(domain: str, callback):
     config = get_config()
-    sub_list = []
-    healthy_ip = set()
-    problem_ip = set()
 
     if os.path.isfile(domain):
-        if not config.quiet:
-            print("validate as file")
-
         def _file_gen():
             with open(domain, "r") as file:
                 for line in file:
                     s = line.strip()
                     if s and not s.startswith("#"):
                         yield s
-
         subdomain_iter = _file_gen()
     elif "." in domain and not domain.endswith(".txt"):
-        if not config.quiet:
-            print(f"Search for subdomain for {domain}")
         subdomain_iter = iter(get_subdomain(domain, config.all_resource, config.source))
     else:
-        print("[x] Invalid domain or file path!")
-        exit(0)
+        return
 
     first_sub = next(subdomain_iter, None)
     if not first_sub:
-        print(f"[x] No subdomain found!!")
-        exit(0)
+        return
 
     domain_root = get_domain_root(first_sub)
     wildcard_baseline = check_wildcard(domain_root)
     subdomain_iter = itertools.chain([first_sub], subdomain_iter)
 
-    if not config.quiet:
-        print(print_legend())
-
     counting = CountTime()
     counting.start()
+
+    console = Console()
+    console.print()
 
     try:
         with ThreadPoolExecutor(max_workers=config.thread) as executor:
@@ -66,15 +55,28 @@ def check_subdomain(domain: str):
                 for future in done:
                     try:
                         is_ok, ip, dict_sub = future.result()
-                        if ip and ip != "No IP":
-                            if is_ok:
-                                healthy_ip.add(ip)
-                            else:
-                                problem_ip.add(ip)
+
                         if dict_sub:
-                            sub_list.append(dict_sub)
-                    except Exception as e:
-                        print(f"[x] Error: {e}")
+                            dict_sub["is_live"] = is_ok
+
+                            dict_sub["server"] = (
+                                dict_sub.get("https", {}).get("server") or
+                                dict_sub.get("http", {}).get("server") or
+                                "Unknown"
+                            )
+
+                            from analysis import HoneypotAnalyzer
+
+                            analyzer = HoneypotAnalyzer(dict_sub, config)
+                            score, label, findings = analyzer.run_all()
+                            dict_sub["is_honeypot"] = score > 0.5
+                            dict_sub["honeypot_score"] = score
+                            dict_sub["honeypot_label"] = label
+                            dict_sub["honeypot_findings"] = findings
+
+                        callback(dict_sub)
+                    except Exception:
+                        pass
 
                     del futures[future]
 
@@ -83,23 +85,14 @@ def check_subdomain(domain: str):
                         new_f = executor.submit(validate_subdomain, next_sub, wildcard_baseline)
                         futures[new_f] = next_sub
 
-                        if config.delay:
-                            time.sleep(config.delay)
+                    if config.delay:
+                        time.sleep(config.delay)
+
         counting.end()
-
-        if config.save_file_plain:
-            save_file_healthy(domain_root, healthy_ip)
-            save_file_problem(domain_root, problem_ip)
-        if config.save_file_json:
-            metadata = create_metadata(domain_root)
-            save_file_as_json(domain_root, sub_list, metadata)
-
-        if not config.quiet:
-            stats.summary(counting.total)
+        console.print()
 
     except KeyboardInterrupt:
-        print("\n[!]Process stop by user...")
-        exit(0)
+        pass
 
 def check_wildcard(domain: str):
     config = get_config()
@@ -151,6 +144,12 @@ class CountTime:
 
     def end(self):
         self.end_time = datetime.now()
+
+    def get_elapsed(self):
+        if self.start_time is None:
+            return 0
+        end = self.end_time if self.end_time else datetime.now()
+        return (end - self.start_time).total_seconds()
 
     @property
     def total(self):

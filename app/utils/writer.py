@@ -1,10 +1,11 @@
 from models import CLOUDFLARE_IPS
-
+from .logger import get_logger
 import hashlib
 import ipaddress
 import json
 from pathlib import Path
 
+log = get_logger("writer")
 def check_results_dir():
     Path("results").mkdir(parents=True, exist_ok=True)
 
@@ -24,7 +25,7 @@ def save_file_healthy(domain: str, ip_sets: set[str]):
         for ip in ip_sets:
             if not is_cloudflare(ip):
                 file.write(f"{ip}\n")
-    print(f"Success save healthy ip as {file_name}")
+    log.error(f"Saved Healthy: {file_name}")
 
 def save_file_problem(domain: str, ip_sets: set[str]):
     check_results_dir()
@@ -33,7 +34,7 @@ def save_file_problem(domain: str, ip_sets: set[str]):
         for ip in ip_sets:
             if not is_cloudflare(ip):
                 file.write(f"{ip}\n")
-    print(f"Success save problem ip as {file_name}")
+    log.error(f"Saved Problem {file_name}")
 
 def save_file_as_json(domain: str , all_results, scan_metadata):
     check_results_dir()
@@ -118,7 +119,7 @@ def save_file_as_json(domain: str , all_results, scan_metadata):
             indent=4,
             default=lambda o: dict(o) if hasattr(o, "items") else str(o)
         )
-    print(f"[*] Success save JSON results as {file_name}")
+    log.error(f"Saved JSON {file_name}")
 
 def clean_item(item):
     keep_fields = {"status", "title", "server", "size", "redir"}

@@ -1,0 +1,75 @@
+Screen {
+    background: #0B0E14;
+}
+
+#filter-input {
+    dock: top;
+    height: 3;
+    margin: 0 1;
+    background: #1A1B26;
+    border: solid #00A3FF;
+    color: #00E0FF;
+}
+
+#filter-input:focus {
+    border: solid #FFD700;
+    color: #00F0FF;
+}
+
+#main-container {
+    height: 1fr;
+    layout: horizontal;
+    background: #0B0E14;
+}
+
+#subdomain-table {
+    width: 1fr;
+    background: #0B0E14;
+    border: solid #00A3FF;
+}
+
+#detail-panel {
+    width: 40;
+    background: #1A1B26;
+    border: solid #FFD700;
+    display: none;
+}
+
+#detail-panel.visible {
+    display: block;
+}
+
+#stats-bar {
+    dock: bottom;
+    height: 3;
+    background: #1A1B26;
+    border-top: solid #FFD700;
+    color: #00A3FF;
+}
+
+DataTable {
+    height: 1fr;
+    background: #0B0E14;
+    color: #00E0FF;
+}
+
+DataTable > .datatable--header {
+    background: #1A1B26;
+    color: #FFD700;
+    text-style: bold;
+}
+
+DataTable > .datatable--cursor {
+    background: #00A3FF 25%;
+    color: #00F0FF;
+}
+
+DataTable > .datatable--stripe {
+    background: #1A1B26;
+}
+
+.status-live { color: #73DACA; }
+.status-forbidden { color: #F7768E; }
+.status-redirect { color: #BB9AF7; }
+.status-dead { color: #565F89; }
+.status-honeypot { color: #BB9AF7; text-style: bold; }

@@ -1,15 +1,15 @@
 ##Module Function
-from utils import sign, show_output, show_quiet, ReconStats
 from .request import send_request
 from analysis import HoneypotAnalyzer
 from models import get_config
+from utils import get_logger
 
 ##Module Package
 import socket
 import random
 import time
 
-stats = ReconStats()
+log = get_logger("validate")
 
 def validate_subdomain(sub, wildcard_baseline):
     config = get_config()
@@ -111,15 +111,10 @@ def validate_subdomain(sub, wildcard_baseline):
         }
 
         status_ok = 200 in [http_status, https_status]
-        if config.quiet:
-            show_quiet(is_okay=status_ok, sub=sub, ip=ip_address, show_ip=config.quiet_ip)
-        else:
-            show_output(data, HoneypotAnalyzer)
 
-        stats.log(http_status, https_status)
         return status_ok, ip_address, data
     except Exception as e:
-        print(f"Error: {sub} -> {e}")
+        log.error(f"Error: {sub} -> {e}")
         return False, "No IP", None
 
 def humane_sleep(base_delay: float):
@@ -150,3 +145,13 @@ def size_filtering(http_size: int = 0, https_size: int = 0) -> bool:
         if (http_size <= 0 or http_size > max_size) and (https_size <= 0 or https_size > max_size):
             return True
     return False
+
+def sign(http_status, https_status, is_wildcard) -> str:
+    if is_wildcard:
+        return "[?]"
+    elif http_status == 200 or https_status == 200:
+        return "[*]"
+    elif http_status == 403 or https_status == 403:
+        return "[!]"
+    else:
+        return "[-]"
