@@ -39,10 +39,15 @@ class DetailPanel(Static):
         https = result.get("https", {})
         h_lat = http.get("latency")
         s_lat = https.get("latency")
-        h_st = _normalize_status(http.get("status"))
-        s_st = _normalize_status(https.get("status"))
-        h_redir = _format_redirect(http.get("redir"))
-        s_redir = _format_redirect(https.get("redir"))
+        h_redir = http.get("redir")
+        s_redir = https.get("redir")
+        h_st = http.get("status")
+        s_st = https.get("status")
+
+        h_st = _normalize_status(h_st)
+        s_st = _normalize_status(s_st)
+        h_redir = _format_redirect(h_redir, subdomain)
+        s_redir = _format_redirect(s_redir)
 
         detail_table.add_row("", "")
         detail_table.add_row("[bold]HTTP", "")
@@ -104,10 +109,14 @@ class DetailPanel(Static):
 
         self.update(panel)
 
-def _format_redirect(url: str) -> str:
+def _format_redirect(url: str, current_subdomain: str = "") -> str:
     if not url or url in ["-", None, "None", ""]:
         return "-"
     parsed = urlparse(url)
+
+    if current_subdomain and parsed.netloc == current_subdomain.lower():
+        return "[bold #9ECE6A]HTTPS Upgrade[/]"
+
     if parsed.netloc:
         return parsed.netloc
     if parsed.path:

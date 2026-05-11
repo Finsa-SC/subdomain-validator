@@ -1,4 +1,6 @@
 import re
+import ipaddress
+from models import CLOUDFLARE_IPS
 
 class FilterParser:
     def parse(self, query, results):
@@ -68,12 +70,28 @@ class FilterParser:
                     return False
 
         if 'ip:' in query:
-            match = re.search(r'ip:([\d\.\*]+)', query)
+            match = re.search(r'ip:(\S+)', query)
             if match:
-                pattern = match.group(1).replace(".", r"\.").replace("*", r"\*")
-                ip = result.get("ip_address", "")
-                if not re.match(pattern, ip):
-                    return False
+                target = match.group(1)
+                ip_str = result.get("ip_address", "")
+
+                if target == 'proxy':
+                    proxy = False
+                    if ip_str and ip_str != "No IP":
+                        try:
+                            ip_obj = ipaddress.ip_address(ip_str)
+                            for network in CLOUDFLARE_IPS:
+                                if ip_obj in ipaddress.ip_network(network):
+                                    proxy = True
+                                    break
+                        except ValueError:
+                            pass
+                    if not proxy:
+                        return False
+                else:
+                    pattern = target.replace(".", r"\.").replace("*", r"\*")
+                    if not re.match(pattern, ip_str):
+                        return False
 
         if query.startswith("not "):
             return not self.matches(query[4:], result)
