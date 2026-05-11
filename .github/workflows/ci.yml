@@ -1,8 +1,6 @@
 name: FinSky Multi-OS Compatibility Test
 
 on:
-  push:
-    branches: [ main ]
   workflow_dispatch:
     inputs:
       reason:
