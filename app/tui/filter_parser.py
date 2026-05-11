@@ -4,6 +4,9 @@ import ipaddress
 from models import PROXY_IPS
 
 class FilterParser:
+    def __init__(self):
+        self.http = {}
+        self.https = {}
     def parse(self, query, results):
         if not query.strip():
             return results
@@ -18,6 +21,8 @@ class FilterParser:
 
     def matches(self, query: str, result):
         query = query.lower()
+        self.http = result.get("http", {})
+        self.https = result.get("https", {})
 
         if query.startswith("not "):
             return not self.matches(query[4:], result)
@@ -26,8 +31,8 @@ class FilterParser:
             match = re.search(r'status:([\w,]+)', query)
             if match:
                 targets = match.group(1).split(",")
-                h_status = result.get("http", {}).get("status")
-                s_status = result.get("https", {}).get("status")
+                h_status = self.http.get("status")
+                s_status = self.https.get("status")
 
                 forbidden = (401, 402, 403)
                 redirect = (301, 302, 307, 308)
@@ -56,35 +61,25 @@ class FilterParser:
             if match:
                 targets = [x.strip() for x in match.group(1).split(",")]
                 server = (
-                    result.get("http", {}).get("server", "").lower() + " " +
-                    result.get("https", {}).get("server", "").lower()
+                    self.http.get("server", "").lower() + " " +
+                    self.http.get("server", "").lower()
                 ).lower()
 
                 if not any(target in server for target in targets):
                     return False
 
         if 'title:' in query:
-            match = re.search(r'title:([\w\s.*,-]+)', query)
+            match = re.search(r'title:([\w\s,-]+)', query)
             matched = False
             if match:
                 targets = [x.strip() for x in match.group(1).split(",")]
 
                 title = (
-                    result.get("http", {}).get("title", "-").lower() + " " +
-                    result.get("https", {}).get("title", "-").lower()
+                    self.http.get("title", "-").lower() + " " +
+                    self.https.get("title", "-").lower()
                 )
 
-                for target in targets:
-                    pattern = (
-                        target
-                        .replace(".", r"\.")
-                        .replace("*", ".*")
-                    )
-
-                    if re.match(pattern, title):
-                        matched = True
-                        break
-                if not matched:
+                if not any(target in title for target in targets):
                     return False
 
         if 'honeypot:' in query:
@@ -155,4 +150,37 @@ class FilterParser:
                             matched = True
                 if not matched:
                     return False
+
+        if 'size:' in query:
+            match = re.search(r'size:([\d,-]+)', query)
+            if match:
+                targets = [x.strip() for x in match.group(1).split(",")]
+                h_size = self.http.get("size", 0)
+                s_size = self.https.get("size", 0)
+
+                matched = False
+
+                for target in targets:
+                    if "-" in target:
+                        try:
+                            min_size, max_size = map(int, target.split("-"))
+                            if (
+                                min_size <= h_size <= max_size or
+                                min_size <= s_size <= max_size
+                            ):
+                                matched = True
+
+                        except ValueError:
+                            pass
+                    else:
+                        try:
+                            exact = int(target)
+                            if h_size == exact == s_size:
+                                matched = True
+                        except ValueError:
+                            pass
+
+                if not matched:
+                    return False
+
         return True
