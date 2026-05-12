@@ -1,4 +1,6 @@
-from rich_pixels import FullcellRenderer
+from textual.screen import ModalScreen
+from textual.widgets import Input
+from textual.containers import Center
 from textual.screen import Screen
 from textual.widgets import Static
 from textual.containers import ScrollableContainer
@@ -10,7 +12,7 @@ from rich.text import Text
 from rich.rule import Rule
 from ..widgets.subdomain_table import _normalize_status
 from ..widgets.detail_panel import _format_redirect
-from utils import do_screenshot
+from utils import do_screenshot, parse_port, scan_port
 
 
 class FullscreenDetail(Screen):
@@ -18,7 +20,8 @@ class FullscreenDetail(Screen):
         Binding("f", "dismiss_screen", "Close Fullscreen"),
         Binding("escape", "dismiss_screen", "Close"),
         Binding("q", "dismiss_screen", "Close"),
-        Binding("s", "screenshot", "Screenshot")
+        Binding("s", "screenshot", "Screenshot"),
+        Binding("p", "scan_port", "Scan Ports")
     ]
 
     def __init__(self, result: dict):
@@ -207,6 +210,28 @@ class FullscreenDetail(Screen):
             callback=refresh
         )
 
+    def action_scan_port(self):
+        def handle_input(value):
+            if not value:
+                return
+            ports = parse_port(value)
+            self.notify(f"Scanning {len(ports)} ports...")
+            result = scan_port(
+                self.result["subdomain"],
+                ports
+            )
+            self.result["ports"] = result
+
+            self.query_one(
+                "#fullscreen-content",
+                Static
+            ).update(self._build_content())
+
+        self.app.push_screen(
+            PortInputModel(),
+            callback=handle_input
+        )
+
     def action_dismiss_screen(self):
             self.app.pop_screen()
 
@@ -245,3 +270,14 @@ def _parse_cookies(http: dict, https: dict) -> dict:
                     cookies[name.strip()] = val.strip()
 
     return cookies
+
+class PortInputModel(ModalScreen):
+    def compose(self) -> ComposeResult:
+        with Center():
+            yield Input(
+                placeholder="80,443,8000-8100",
+                id="port-input"
+            )
+
+    def on_input_submitted(self, event: Input.Submitted):
+        self.dismiss(event.value)
