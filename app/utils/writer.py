@@ -122,10 +122,11 @@ def save_file_as_json(domain: str , all_results, scan_metadata):
     log.error(f"Saved JSON {file_name}")
 
 def clean_item(item):
-    keep_fields = {"status", "title", "server", "size", "redir"}
+    keep_fields = {"status", "title", "server", "size", "redir", "latency", "tech", "body_hash"}
     for proto in ("http", "https"):
         if proto in item:
             item[proto] = {k: v for k, v in item[proto].items() if k in keep_fields}
     item.pop("signing", None)
     item.pop("timestamp", None)
+    item.pop("honeypot_findings", None)
     return item

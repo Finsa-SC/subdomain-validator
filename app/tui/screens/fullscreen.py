@@ -110,7 +110,7 @@ class FullscreenDetail(Screen):
 
         # Tech detection
         sections.append(_section_rule("Tech Detection"))
-        tech = _detect_tech(http, https)
+        tech = list(set((http.get("tech") or []) + (https.get("tech") or [])))
         if tech:
             tech_table = _make_table()
             for item in tech:
@@ -148,7 +148,7 @@ class FullscreenDetail(Screen):
 
         # Headers
         sections.append(_section_rule("HTTP Header"))
-        h_header = http.get("tech") or {}
+        h_header = http.get("raw_header") or {}
         if h_header:
             ht2 = _make_table()
             for k, v in h_header.items():
@@ -158,7 +158,7 @@ class FullscreenDetail(Screen):
             sections.append(Text("  No headers captured", style="#565F89"))
 
         sections.append(_section_rule("HTTPS Header"))
-        s_header = https.get("tech") or {}
+        s_header = https.get("raw_header") or {}
         if s_header:
             st2 = _make_table()
             for key, val in s_header.items():
@@ -212,26 +212,3 @@ def _parse_cookies(http: dict, https: dict) -> dict:
                     cookies[name.strip()] = val.strip()
 
     return cookies
-
-def _detect_tech(http: dict, https: dict) -> list:
-    tech = set()
-    for proto in (http, https):
-        header = proto.get("tech") or {}
-        header_str = str(header).lower()
-        checks = {
-            "Cloudflare": ["cloudflare", "cf-ray"],
-            "PHP": ["php"],
-            "WordPress": ["wordpress", "wp-"],
-            "Nginx": ["nginx"],
-            "Apache": ["apache"],
-            "Laravel": ["laravel"],
-            "Django": ["django", "csrftoken"],
-            "ASP.NET": ["asp.net", "x-aspnet"],
-            "Node.js": ["express", "node"],
-            "Varnish": ["varnish", "x-varnish"],
-            "jQuery": ["jquery"],
-        }
-        for name, keywords in checks.items():
-            if any(kw in header_str for kw in keywords):
-                tech.add(name)
-    return sorted(tech)

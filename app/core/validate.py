@@ -11,6 +11,25 @@ import time
 
 log = get_logger("validate")
 
+TECH_SIGNATURES = {
+    "Cloudflare": ["cloudflare", "cf-ray"],
+    "PHP": ["x-powered-by: php", "php/"],
+    "WordPress": ["wordpress", "wp-"],
+    "Nginx": ["nginx"],
+    "Apache": ["apache"],
+    "Laravel": ["laravel_session", "laravel"],
+    "Django": ["csrftoken"],
+    "ASP.NET": ["x-aspnet-version", "x-powered-by: asp.net"],
+    "Node.js": ["x-powered-by: express"],
+    "Varnish": ["x-varnish", "via: varnish"],
+    "IIS": ["microsoft-iis"],
+}
+def detect_tech(headers: dict) -> list[str]:
+    if not headers:
+        return []
+    header_str = " ".join(f"{k.lower()}: {str(v).lower()}" for k, v in headers.items())
+    return sorted(name for name, kws in TECH_SIGNATURES.items() if any(kw in header_str for kw in kws))
+
 def validate_subdomain(sub, wildcard_baseline):
     config = get_config()
 
@@ -39,8 +58,8 @@ def validate_subdomain(sub, wildcard_baseline):
         http_size = h.get("size", b"")
         http_redir = h.get("location", "-")
         http_title = h.get("title", "")
-        http_header = h.get("header") if h.get("header") is not None else {}
-        http_keys = h.get("header") or []
+        http_raw_header = h.get("header") or {}
+        http_keys = h.get("header_kys") or []
         http_hash = h.get("body_hash")
 
         https_status = s.get("status")
@@ -49,8 +68,8 @@ def validate_subdomain(sub, wildcard_baseline):
         https_size = s.get("size", b"")
         https_redir = s.get("location", "-")
         https_title = s.get("title", "")
-        https_header = s.get("header") if s.get("header") is not None else {}
-        https_keys = s.get("header") or []
+        https_raw_header = s.get("header") or {}
+        https_keys = s.get("header_keys") or []
         https_hash = s.get("body_hash")
 
         ##Size filtering
@@ -91,7 +110,8 @@ def validate_subdomain(sub, wildcard_baseline):
                 "size": http_size if http_size else 0,
                 "latency": http_latency,
                 "redir": http_redir,
-                "tech": http_header,
+                "tech": detect_tech(http_raw_header),
+                "raw_header": https_raw_header,
                 "body_hash": http_hash,
                 "header_keys": http_keys
             },
@@ -102,7 +122,8 @@ def validate_subdomain(sub, wildcard_baseline):
                 "size": https_size if https_size else 0,
                 "latency": https_latency,
                 "redir": https_redir,
-                "tech": https_header,
+                "tech": detect_tech(https_raw_header),
+                "raw_header": https_raw_header,
                 "body_hash": https_hash,
                 "header_keys": https_keys
             },

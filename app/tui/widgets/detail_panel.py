@@ -45,8 +45,8 @@ class DetailPanel(Static):
         s_st = https.get("status")
         h_sz = http.get("size")
         s_sz = https.get("size")
-        h_tech = _detect_tech(http.get("tech"))
-        s_tech = _detect_tech(https.get("tech"))
+        h_tech = http.get("tech")
+        s_tech = https.get("tech")
 
         h_st = _normalize_status(h_st)
         s_st = _normalize_status(s_st)
@@ -115,30 +115,6 @@ class DetailPanel(Static):
             detail_table.add_row("Wildcard:", "")
 
         self.update(panel)
-
-def _detect_tech(headers: dict) -> list:
-    tech = []
-    if not headers:
-        return []
-
-    headers_str = str(headers).lower()
-
-    if "cloudflare" in headers_str or "cf-ray" in headers:
-        tech.append("cloudflare")
-
-    if "php" in headers_str:
-        tech.append("php")
-
-    if "wordpress" in headers_str:
-        tech.append("wordpress")
-
-    if "nginx" in headers_str:
-        tech.append("nginx")
-
-    if "laravel" in headers_str:
-        tech.append("laravel")
-
-    return list(set(tech))
 
 def _format_redirect(url: str, current_subdomain: str = "") -> str:
     if not url or url in ["-", None, "None", ""]:
