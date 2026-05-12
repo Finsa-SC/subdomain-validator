@@ -79,3 +79,22 @@ DataTable > .datatable--stripe {
     background: #0B0E14;
     padding: 1 2;
 }
+
+PortInputModal {
+    align: center middle;
+    background: rgba(0, 0, 0, 0.5);
+}
+
+#port-modal {
+    width: 42;
+    height: auto;
+    border: round #00A3FF;
+    background: #1A1B26;
+    padding: 1 2;
+}
+
+#title {
+    text-style: bold;
+    content-align: center middle;
+    margin-bottom: 1;
+}

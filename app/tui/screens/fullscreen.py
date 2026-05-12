@@ -1,9 +1,8 @@
 from textual.screen import ModalScreen
 from textual.widgets import Input
-from textual.containers import Center
 from textual.screen import Screen
 from textual.widgets import Static
-from textual.containers import ScrollableContainer
+from textual.containers import ScrollableContainer, Center, Vertical
 from textual.binding import Binding
 from textual.app import ComposeResult
 from rich.panel import Panel
@@ -228,7 +227,7 @@ class FullscreenDetail(Screen):
             ).update(self._build_content())
 
         self.app.push_screen(
-            PortInputModel(),
+            PortInputModal(),
             callback=handle_input
         )
 
@@ -271,13 +270,23 @@ def _parse_cookies(http: dict, https: dict) -> dict:
 
     return cookies
 
-class PortInputModel(ModalScreen):
+class PortInputModal(ModalScreen):
+    BINDINGS = [
+        Binding("escape", "cancel", "Cancel")
+    ]
     def compose(self) -> ComposeResult:
         with Center():
-            yield Input(
-                placeholder="80,443,8000-8100",
-                id="port-input"
-            )
+            with Vertical(id="port-modal"):
+                yield Static("Enter ports", id="title")
+                yield Input(
+                    placeholder="80,443,8000-8100",
+                    id="port-input"
+                )
+
+    def on_mount(self):
+        self.query_one(Input).focus()
 
     def on_input_submitted(self, event: Input.Submitted):
         self.dismiss(event.value)
+    def action_cancel(self):
+        self.dismiss(None)
