@@ -242,4 +242,31 @@ class FilterParser:
                 if not matched:
                     return False
 
+        if 'port:' in query:
+            match = re.search(r'port:([\d,-]+)', query)
+            if match:
+                targets = [x.strip() for x in match.group(1).split(",")]
+                ports = result.get("ports", {})
+                matched = False
+                for target in targets:
+                    if '-' in target:
+                        try:
+                            start, end = map(int, target.split('-'))
+                            for port in ports:
+                                if start <= int(port) <= end:
+                                    matched = True
+                                    break
+                        except Exception:
+                            pass
+                    else:
+                        try:
+                            exact = int(target)
+                            if exact in ports:
+                                matched = True
+                        except ValueError:
+                            pass
+
+                if not matched:
+                    return False
+
         return True
