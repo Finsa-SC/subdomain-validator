@@ -1,17 +1,5 @@
 # subdomain-validator
 
-> [!CAUTION]
-> **🚧 BIG REFACTOR IN PROGRESS 🚧**
-> 
-> This project is currently in the stage of a major overhaul (refactor). 
-> Some of the documentation below (features, flags, or folder structures) may no longer be relevant or have not been updated according to the latest code in the `main` branch.
-> 
-> **What changed?**
-> - Migrate the interface to **TUI (Terminal User Interface)** using the `Textual` library.
-> - Restructuring internal modules for better efficiency.
-> - CLI flag adjustment.
-
-
 <div align="center">
 
 ![Python](https://img.shields.io/badge/Python-3.10+-blue?style=flat-square&logo=python&logoColor=white)
@@ -20,7 +8,7 @@
 ![Security](https://img.shields.io/badge/Use-Ethical%20Only-red?style=flat-square)
 ![Status](https://img.shields.io/badge/Status-Active-brightgreen?style=flat-square)
 
-**A lightweight yet powerful CLI tool for subdomain enumeration, HTTP/HTTPS validation, and honeypot detection.**
+**A subdomain enumeration and validation tool with a Terminal User Interface (TUI), honeypot detection, and real-page screenshot capture.**
 
 </div>
 
@@ -36,31 +24,52 @@
 
 ## ✨ Features
 
-- **Multi-source subdomain discovery** — HackerTarget, crt.sh, RapidDNS, AlienVault OTX
-- **Source selection** — pick a specific source (`-s`) or run all at once (`-all`)
-- **Flexible input** — domain (`-d`), file (`-dL`), or **stdin/pipe** support
-- **Dual protocol validation** — HTTP and HTTPS simultaneously, with IP resolution, Server header detection, and latency measurement
-- **Wildcard DNS detection** — skip false positives (`-w`)
-- **Response size filtering** — filter by min/max response size (`--min-size`, `--max-size`)
-- **Custom DNS resolver** — use Cloudflare, Google, Quad9, OpenDNS, or a custom IP (`--dns`)
-- **🍯 Honeypot Analyzer** — smart fingerprinting to detect traps and fake services (`--honeypot`)
-  - Checks server signatures, body hashes, header anomalies, and behavioral patterns
-  - Confidence scoring with tiered signal weighting (Critical / Strong / Weak)
-  - Visual score bar with labels: Confirmed / Likely / Probable / Possible / Unlikely
-- **Aggressive mode** — enable all informative flags in one shot (`-a`)
-- **Filter live hosts only** (`-A`)
-- **Verbose mode** with redirect info (`-v`, `-r`)
-- **Quiet mode** for clean output (`-q`) — optionally show IPs instead of subdomains (`--ip`)
-- **Page title extraction** per subdomain (`-t`)
-- **Technology detection** from response headers (`-x`)
-- **Configurable request delay** between threads (`--delay`)
-- **Automatic Cloudflare IP filtering** on saved results
-- **Save results** as plain IP list (`-o`) or detailed JSON (`-oJ`)
-  - JSON output groups findings into: unique active, honeypots, wildcards, others
-- **Scan summary** at the end — OK, Forbidden, SSL Error, Server Error, No Response
-- **Concurrent validation** via ThreadPoolExecutor (configurable via `--thread`)
-- **Full CLI support** via `argparse` — no interactive prompts
-- **Default configuration** via `.env`
+**Discovery**
+- Multi-source subdomain enumeration — HackerTarget, crt.sh, RapidDNS, AlienVault OTX
+- Source selection — pick a specific source (`-s`) or run all at once (`--all`)
+- Flexible input — domain (`-d`), file (`-dL`), or stdin/pipe support
+- Wildcard DNS baseline detection to filter false positives (`-w`)
+
+**Validation**
+- Dual-protocol HTTP/HTTPS validation with IP resolution, server header, and latency measurement
+- Custom DNS resolver — Cloudflare, Google, Quad9, OpenDNS, or custom IP (`--dns`)
+- Response size filtering by min/max bytes (`--min-size`, `--max-size`)
+- Technology detection from response headers (Nginx, Apache, PHP, WordPress, Cloudflare, etc.)
+
+**TUI (Terminal User Interface)**
+- Full interactive TUI powered by [Textual](https://github.com/Textualize/textual)
+- Live table with real-time scan results — subdomain, IP, server, HTTP/HTTPS status
+- Side detail panel with per-subdomain HTTP, HTTPS, tech, and honeypot breakdown
+- Fullscreen detail view with complete header, cookie, and findings display
+- Filter bar with structured query syntax — `status:200`, `server:nginx`, `honeypot:true`, `NOT status:404`, etc.
+- Keyboard-driven navigation
+
+**🍯 Honeypot Analyzer**
+- Multi-signal fingerprinting engine to detect honeypots, canary traps, and fake services
+- Signals checked: server signatures, body hashes, literal honeypot headers, suspicious header ordering, identical HTTP/HTTPS bodies, default page titles, bait subdomain names
+- Noisy-OR probability model with tiered signal weighting (Critical / Strong / Weak)
+- Confidence labels: Confirmed / Likely / Probable / Possible / Unlikely
+
+**📸 Screenshot Capture**
+
+Press S in fullscreen view to capture the current live page using Playwright (Chromium headless rendering).
+
+- Screenshots are saved to results/screenshots/<subdomain>.png
+- Only executed for valid targets (HTTP 200, size > 100 bytes, non-generic title)
+- Preview is shown inside the TUI using rich-pixels for inline rendering
+
+> After saving, the image is also opened using the system default image viewer:
+
+Linux: xdg-open
+macOS: open
+Windows: os.startfile
+
+**Export**
+- Save IPs as plain text list (`-o`)
+- Save structured JSON with metadata, summary, and grouped findings (`-oJ`)
+- Automatic Cloudflare and CDN IP filtering on all saved output
+- JSON deduplicates by response fingerprint hash
+- Purge results directory with `--purge`
 
 ---
 
@@ -68,6 +77,7 @@
 
 - Python 3.10+
 - [uv](https://github.com/astral-sh/uv)
+- Chromium (auto-installed by Playwright on first screenshot)
 
 ---
 
@@ -86,6 +96,9 @@ source .venv/bin/activate        # Linux / macOS
 # Install dependencies
 uv sync
 
+# Install Playwright browser (required for screenshots)
+playwright install chromium
+
 # (Optional) Configure defaults
 cp .env.example .env
 ```
@@ -95,10 +108,10 @@ cp .env.example .env
 ## 📖 Usage
 
 ```bash
-python app/main.py [-h] [-V] (-d DOMAIN | -dL FILE) [options]
+python app/main.py (-d DOMAIN | -dL FILE) [options]
 ```
 
-Or using pipe/stdin:
+Pipe/stdin support:
 ```bash
 cat hosts.txt | python app/main.py
 ```
@@ -107,156 +120,124 @@ cat hosts.txt | python app/main.py
 
 ## 🚩 Flags
 
-### Input Arguments
+### Input
 
-| Flag | Long | Description |
-|------|------|-------------|
-| `-d` | `--domain` | Target domain to enumerate |
-| `-dL` | `--domain-list` | Path to file containing subdomains to validate |
-| `-s` | `--source` | Select a specific discovery source (`hackertarget`, `crtsh`, `rapiddns`, `alienvault`) |
-| `-all` | | Use all available discovery sources |
+| Flag | Description |
+|------|-------------|
+| `-d`, `--domain` | Target domain to enumerate subdomains from |
+| `-dL`, `--domain-list` | Path to file of subdomains to validate directly |
+| `-s`, `--source` | Pick one source: `hackertarget`, `crtsh`, `rapiddns`, `alienvault` |
+| `--all` | Use all available discovery sources and merge results |
 
 ### Configuration
 
-| Flag | Long | Description |
-|------|------|-------------|
-| | `--timeout` | Request timeout in seconds *(default: from `.env` or `3.0`)* |
-| | `--thread` | Number of concurrent threads *(default: from `.env` or `5`)* |
-| | `--delay` | Delay between requests in seconds *(default: `0.0`)* |
-| | `--dns` | Custom DNS resolver: `cloudflare`, `google`, `quad9`, `opendns`, or a raw IP |
+| Flag | Description |
+|------|-------------|
+| `--timeout` | Request timeout in seconds (default: 3.0) |
+| `--thread` | Concurrent threads (default: 5) |
+| `--delay` | Delay between requests in seconds (default: 0.0) |
+| `--dns` | DNS resolver: `cloudflare`, `google`, `quad9`, `opendns`, or raw IP |
+| `--min-size` | Skip responses smaller than N bytes |
+| `--max-size` | Skip responses larger than N bytes |
 
-### Profiling & Analysis
+### Output & Export
 
-| Flag | Long | Description |
-|------|------|-------------|
-| `-v` | `--verbose` | Show detailed protocol and header information |
-| `-t` | `--title` | Print page title below each subdomain |
-| `-x` | `--header-tech` | Show technology stack detected from response headers |
-| `-r` | `--redirect` | Show redirect targets *(requires `-v`)* |
-| `--honeypot` | | Enable smart honeypot fingerprinting |
-| `-a` | `--aggressive` | Enable all informative flags (`-v`, `-t`, `-x`, `-r`, `--honeypot`) |
+| Flag | Description |
+|------|-------------|
+| `-o`, `--output` | Save live IPs as plain text |
+| `-oJ`, `--output-json` | Save full structured results as JSON |
+| `-w`, `--no-wildcard` | Skip subdomains matching wildcard DNS baseline |
+| `--honeypot` | Enable honeypot analyzer (always runs in TUI regardless) |
+| `--purge` | Delete the entire `results/` directory |
+| `-V`, `--version` | Show version |
 
-### Output Filtering
+---
 
-| Flag | Long | Description |
-|------|------|-------------|
-| `-A` | `--available` | Only show hosts with status `200 OK` |
-| `-w` | `--no-wildcard` | Skip subdomains detected as wildcard DNS |
-| `-q` | `--quiet` | Clean output — only show subdomains with 200 status |
-| `--ip` | | Show IPs instead of subdomains *(requires `-q`)* |
-| `--color` | | Colorize output text |
-| | `--min-size` | Filter out responses smaller than N bytes |
-| | `--max-size` | Filter out responses larger than N bytes |
+## ⌨️ TUI Keybindings
 
-### Export Options
+| Key | Action |
+|-----|--------|
+| `↑` / `↓` | Navigate table |
+| `Enter` / `D` | Open side detail panel |
+| `F` | Toggle fullscreen detail |
+| `S` | Screenshot the live page (fullscreen only) |
+| `/` | Focus filter bar |
+| `Escape` | Close detail / unfocus filter |
+| `C` | Copy subdomain to clipboard |
+| `B` | Open subdomain in browser |
+| `E` | Export selected |
+| `Shift+E` | Export all filtered results |
+| `F1` | Show help |
+| `Q` | Quit |
 
-| Flag | Long | Description |
-|------|------|-------------|
-| `-o` | `--output` | Save results as plain IP list |
-| `-oJ` | `--output-json` | Save results as structured JSON with full details |
+---
 
-> `-d` and `-dL` are mutually exclusive. `-r` requires `-v`. `--ip` requires `-q`.
+## 🔍 Filter Query Syntax
+
+The filter bar accepts structured queries. Multiple filters can be combined.
+
+| Query | Description |
+|-------|-------------|
+| `status:200` | Match specific HTTP status code |
+| `status:forbidden` | Match 401/402/403 |
+| `status:redirect` | Match 301/302/307/308 |
+| `server:nginx` | Match by server header value |
+| `tech:cloudflare` | Match by detected technology |
+| `title:admin` | Match by page title |
+| `honeypot:true` | Show only suspected honeypots |
+| `honeypot:confirmed` | Match by confidence label |
+| `wildcard:true` | Show/hide wildcard matches |
+| `ip:1.2.3.*` | Match by IP pattern (supports wildcards) |
+| `ip:proxy` | Show only proxy/CDN IPs |
+| `size:500-5000` | Filter by response size range |
+| `latency:100-500` | Filter by latency range in ms |
+| `subdomain:*.dev.*` | Glob match on subdomain name |
+| `NOT status:404` | Negate any filter |
 
 ---
 
 ## 💡 Examples
 
 ```bash
-# Basic scan
+# Basic scan with TUI
 python app/main.py -d example.com
 
 # Use all discovery sources
-python app/main.py -d example.com -all
+python app/main.py -d example.com --all
 
 # Use a specific source
 python app/main.py -d example.com -s crtsh
 
-# Only show live hosts (HTTP 200)
-python app/main.py -d example.com -A
+# Custom DNS + skip wildcards + save JSON
+python app/main.py -d example.com --dns cloudflare -w -oJ
 
-# Verbose with redirect info
-python app/main.py -d example.com -v -r
+# Scan from a file of subdomains
+python app/main.py -dL hosts.txt --thread 20 --timeout 5
 
-# Clean output with page titles and tech detection
-python app/main.py -d example.com -q -t -x
+# Pipe from another tool
+subfinder -d example.com | python app/main.py
 
-# Enable honeypot detection
-python app/main.py -d example.com --honeypot
+# Filter by size (50 bytes min, 1MB max)
+python app/main.py -d example.com --min-size 50 --max-size 1000000
 
-# Full aggressive mode (all analysis flags at once)
-python app/main.py -d example.com -a
+# Slow scan with jitter delay
+python app/main.py -d example.com --delay 0.5 --thread 3
 
-# Use custom DNS resolver
-python app/main.py -d example.com --dns cloudflare
-python app/main.py -d example.com --dns 1.1.1.1
-
-# Filter by response size (min 500 bytes, max 1MB)
-python app/main.py -d example.com --min-size 500 --max-size 1000000
-
-# Scan from file, custom timeout and threads
-python app/main.py -dL hosts.txt --timeout 5.0 --thread 20
-
-# Pipe input from another tool
-cat hosts.txt | python app/main.py
-
-# Skip wildcard DNS + save as JSON
-python app/main.py -d example.com -w -oJ
-
-# Slow scan with delay between requests
-python app/main.py -d example.com --delay 0.5 --thread 5
-
-# Full combo
-python app/main.py -dL hosts.txt -A -w -a -o -oJ --thread 20 --timeout 5
+# Purge results folder
+python app/main.py --purge
 ```
-
----
-
-## 🖥️ Example Output
-
-```
-[*] sub.example.com      | 93.184.216.34   | Apache          | HTTP: 200 (250ms)  | HTTPS: 200 (310ms)  [ (OK) ]
-        |_title: [Example Domain]
-        |_Tech      : Apache/2.4.41
-[!] admin.example.com    | 93.184.216.35   | nginx           | HTTP: 403 (80ms)   | HTTPS: 403 (90ms)   [ [!Forbidden] ]
-        |_Honeypot: ████░░░░░░ 42.5% [Probable]
-        |_[ Findings: High-value bait subdomain: 'admin', HTTP 200 but no page title ]
-[-] old.example.com      | 93.184.216.36   | Unknown         | HTTP: 404 (120ms)  | HTTPS: -   (N/A)
-
-
-Summary:
-Host Up      : 1
-Forbidden    : 1
-SSL Error    : 0
-Server Error : 0
-No Response  : 0
-```
-
-### Output Prefixes
-
-| Prefix | Meaning |
-|--------|---------|
-| `[*]` | Host is alive and accessible (200 OK) |
-| `[!]` | Host exists but access is denied (403 Forbidden) |
-| `[?]` | Possible wildcard DNS match |
-| `[-]` | Host found with another status code |
 
 ---
 
 ## 🍯 Honeypot Analyzer
 
-The `--honeypot` flag enables a multi-signal fingerprinting engine designed to detect deception infrastructure (honeypots, canary traps, fake services).
-
-### How It Works
-
-Signals are grouped into tiers and combined using a **Noisy-OR** probability model:
+The honeypot engine runs automatically on every subdomain in the TUI. Signals are grouped into tiers and combined using a **Noisy-OR** probability model.
 
 | Tier | Signals |
 |------|---------|
-| **Critical** | Known honeypot server signature, honeypot body hash match, literal honeypot headers (`x-honeypot`, `x-canary`, etc.), Cloudflare IP leak |
-| **Strong** | Obsolete server version, suspicious header ordering, identical body on HTTP & HTTPS, default server page titles |
-| **Weak** | High-value bait subdomain name (`admin`, `vpn`, `db`, etc.), missing page title on 200 response |
-
-### Confidence Labels
+| **Critical** | Known honeypot server signature, body hash match against known honeypots, literal honeypot headers (`x-honeypot`, `x-canary`, etc.) |
+| **Strong** | Obsolete/deliberately exposed server version, suspicious header ordering, identical body on HTTP and HTTPS (without redirect), default server page title |
+| **Weak** | High-value bait subdomain name (`admin`, `vpn`, `db`, `shell`, etc.), HTTP 200 with no page title |
 
 | Score | Label |
 |-------|-------|
@@ -270,69 +251,79 @@ Signals are grouped into tiers and combined using a **Noisy-OR** probability mod
 
 ## 🔍 Discovery Sources
 
-| Source | Flag | Notes |
-|--------|------|-------|
-| HackerTarget | `hackertarget` | Default source. Free, no API key required. |
-| crt.sh | `crtsh` | Certificate transparency logs. No API key required. |
-| RapidDNS | `rapiddns` | Scrapes subdomain data from rapiddns.io. |
-| AlienVault OTX | `alienvault` | Passive DNS data. Requires an API key. |
-
-Use `-s <source>` to pick one, or `-all` to run all sources and merge results.
+| Source | Key | Notes |
+|--------|-----|-------|
+| HackerTarget | `hackertarget` | Default. Free, no API key. |
+| crt.sh | `crtsh` | Certificate transparency logs. No key required. |
+| RapidDNS | `rapiddns` | Scrapes rapiddns.io. |
+| AlienVault OTX | `alienvault` | Passive DNS. Requires an API key. |
 
 ---
 
-## 📄 File Input Format (`-dL`)
-
-The format is flexible — the tool reads the **first value per line** (split by `,`). HackerTarget-style output works out of the box, but so does a plain subdomain list:
-
-```
-# HackerTarget format (works)
-sub.example.com,93.184.216.34
-
-# Plain list (also works)
-sub.example.com
-admin.example.com
-```
-
----
-
-## ⚙️ Environment Variables
-
-Configurable via `.env` (copy from `.env.example`). CLI flags will **override** these at runtime.
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `TIMEOUT` | `3.0` | HTTP request timeout in seconds |
-| `THREAD` | `5` | Number of concurrent threads |
-| `DELAY` | `0.0` | Delay between requests in seconds |
-| `DEBUG` | `False` | When `True`, skips CLI and runs directly against `hosts.txt` |
-
+## 📸 Screenshots
+ 
+Screenshots are taken by opening the real URL in a headless Chromium browser (via Playwright), then saving the top viewport.
+ 
+Saved to `results/screenshots/<subdomain>.png`. A preview is also rendered inline in the TUI fullscreen view using `rich-pixels`.
+ 
+Screenshot conditions (all must pass):
+- HTTP or HTTPS status = 200
+- Response size > 100 bytes
+- Page title is not a generic default (nginx default page, "It works!", etc.)
 ---
 
 ## 💾 Output Files
 
-Results are saved in the `results/` directory. Cloudflare IPs are automatically filtered from all saved output.
+All saved to `results/`. CDN and proxy IPs (Cloudflare, Akamai, Fastly, etc.) are automatically filtered from output.
 
 | File | Contents |
 |------|----------|
-| `results/<domain>_healthy_ip.txt` | IPs that returned 200 OK |
+| `results/<domain>_healthy_ip.txt` | IPs that returned HTTP 200 |
 | `results/<domain>_problem_ip.txt` | IPs with non-200 responses |
-| `results/<domain>.json` | Structured JSON with metadata, summary, and grouped findings |
+| `results/<domain>.json` | Structured JSON with metadata, summary, and deduplicated findings |
+| `results/screenshots/<subdomain>.png` | Full-page screenshots of live hosts |
 
 ### JSON Structure
 
 ```json
 {
-  "metadata": { "timestamp": "...", "domain": "...", "thread_used": 5 },
-  "summary": { "total_found": 42, "unique_active": 10, "honeypots": 2, ... },
+  "metadata": {
+    "timestamp": "2026-01-01 12:00:00",
+    "domain": "example.com",
+    "thread_used": 10
+  },
+  "summary": {
+    "total_found": 42,
+    "unique_active": 8,
+    "honeypots": 2,
+    "wildcard_ignored": 5,
+    "others": 27
+  },
   "findings": {
-    "unique_active": { "<fingerprint_hash>": { "total": 3, "sample": { ... } } },
+    "unique_active": {
+      "<fingerprint_hash>": { "total": 3, "sample": { ... } }
+    },
     "honeypots": [ { ... } ],
     "wildcard_sample": [ { ... } ],
     "others": { ... }
   }
 }
 ```
+
+Findings in `unique_active` and `others` are deduplicated by a fingerprint hash of `status + server + body_hash`. Each entry includes a `total` count and one representative `sample`.
+
+---
+
+## ⚙️ Environment Variables
+
+Configure via `.env` (copy from `.env.example`). CLI flags override these at runtime.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `TIMEOUT` | `3.0` | HTTP request timeout in seconds |
+| `THREAD` | `5` | Concurrent thread count |
+| `DELAY` | `0.0` | Delay between requests |
+| `DEBUG` | `False` | When `True`, bypasses CLI and runs against `hosts.txt` directly |
 
 ---
 
@@ -341,32 +332,44 @@ Results are saved in the `results/` directory. Cloudflare IPs are automatically 
 ```
 subdomain-validator/
 ├── app/
-│   ├── main.py             # Entry point — argparse CLI & stdin/pipe support
+│   ├── main.py                  # Entry point — argparse CLI, pipe support, --purge
 │   ├── analysis/
-│   │   └── honeypot.py     # HoneypotAnalyzer — multi-signal fingerprinting engine
+│   │   └── honeypot.py          # HoneypotAnalyzer — Noisy-OR fingerprinting engine
 │   ├── core/
-│   │   ├── request.py      # HTTP/HTTPS request helpers with latency measurement
-│   │   ├── scanner.py      # Orchestration: fetch, threading, wildcard check
-│   │   ├── stealth.py      # StealthMode — randomized UA & browser impersonation
-│   │   └── validate.py     # Per-subdomain validation logic & stats tracking
+│   │   ├── request.py           # HTTP/HTTPS requests via curl_cffi with stealth headers
+│   │   ├── scanner.py           # ThreadPoolExecutor orchestration, wildcard baseline
+│   │   ├── stealth.py           # Randomized User-Agent and browser impersonation
+│   │   └── validate.py          # Per-subdomain validation, tech detection, data building
 │   ├── models/
-│   │   ├── scan_config.py  # ScanConfig dataclass & global config accessor
-│   │   └── signatures.py   # Honeypot signatures, weights, DNS providers, UA fallbacks
+│   │   ├── scan_config.py       # ScanConfig dataclass and global config accessor
+│   │   └── signatures.py        # Honeypot signatures, PROXY_IPS, DNS providers, UA fallbacks
 │   ├── sources/
-│   │   ├── handler.py      # Source dispatcher — routes to the right fetcher
-│   │   ├── hackertarget.py # HackerTarget API source
-│   │   ├── crtsh.py        # crt.sh certificate transparency source
-│   │   ├── rapiddns.py     # RapidDNS scraper source
-│   │   └── alienvault.py   # AlienVault OTX passive DNS source
+│   │   ├── handler.py           # Source dispatcher
+│   │   ├── hackertarget.py
+│   │   ├── crtsh.py
+│   │   ├── rapiddns.py
+│   │   └── alienvault.py
+│   ├── tui/
+│   │   ├── app.py               # Textual App root
+│   │   ├── filter_parser.py     # Structured filter query engine
+│   │   ├── styles.css           # TUI theme (dark, cyan/gold palette)
+│   │   ├── screens/
+│   │   │   ├── main_screen.py   # Main layout — table + filter + detail panel
+│   │   │   ├── fullscreen.py    # Fullscreen detail + S to screenshot
+│   │   │   └── help_screen.py   # F1 help modal
+│   │   └── widgets/
+│   │       ├── subdomain_table.py
+│   │       ├── detail_panel.py
+│   │       └── stats_bar.py
 │   └── utils/
-│       ├── output.py       # Output formatting, colorization, sign classification
-│       ├── summary.py      # ReconStats — scan result tracker and summary printer
-│       └── writer.py       # File saving logic with Cloudflare IP filtering
+│       ├── screenshotter.py     # Playwright screenshot + rich-pixels TUI preview
+│       ├── writer.py            # JSON/TXT export with CDN IP filtering
+│       └── logger.py            # File logger to /tmp/subv.log
 ├── assets/
-│   └── banner.txt          # ASCII banner
-├── .env.example            # Configuration template
-├── Dockerfile              # Docker support (Alpine-based, non-root user)
-└── pyproject.toml          # Project metadata and dependencies
+│   └── banner.txt
+├── .env.example
+├── Dockerfile
+└── pyproject.toml
 ```
 
 ---
@@ -378,21 +381,23 @@ subdomain-validator/
 docker build -t subvr .
 
 # Run
-docker run --rm subv -d example.com -all
+docker run --rm subvr -d example.com --all
 ```
+
+> Screenshot capture is not available inside Docker without a display server or virtual framebuffer.
 
 ---
 
 > [!WARNING]
 > **Gunakan dengan bijak. / Use responsibly.**
 >
-> This tool performs **active reconnaissance** — during the validation phase, HTTP/HTTPS requests are sent directly to each discovered subdomain. Your activity **will be logged** by the target and may trigger IDS/WAF alerts.
+> This tool performs **active reconnaissance** — HTTP/HTTPS requests are sent directly to each discovered subdomain during validation. Your traffic **will be logged** by the target and may trigger IDS/WAF alerts.
 >
-> This tool is intended **only** for domains you **own** or have **explicit written permission** to test.
-> Unauthorized use against third-party domains may violate applicable laws and regulations:
+> Only use on domains you **own** or have **explicit written permission** to test.
+> Unauthorized use may violate:
 > - 🇮🇩 **UU ITE** (Indonesia)
 > - 🇺🇸 **CFAA** (United States)
-> - And equivalent laws in your jurisdiction
+> - And equivalent laws in your jurisdiction.
 >
 > The author is not responsible for any misuse or damage caused by this tool.
 
@@ -411,6 +416,6 @@ Distributed under the [MIT License](LICENSE).
 🇮🇩 *Proudly made in Indonesia by [Finsa Kusuma Putra](https://github.com/Finsa-SC)*
 
 #### *"Dari Indonesia, untuk dunia."*
-*From Indonesia, for the world*<br>
-*let's prove them wrong*
+*From Indonesia, for the world.*
+
 </div>
