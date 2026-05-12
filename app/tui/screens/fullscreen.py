@@ -9,13 +9,15 @@ from rich.text import Text
 from rich.rule import Rule
 from ..widgets.subdomain_table import _normalize_status
 from ..widgets.detail_panel import _format_redirect
+import threading
 
 
 class FullscreenDetail(Screen):
     BINDINGS = [
         Binding("f", "dismiss_screen", "Close Fullscreen"),
         Binding("escape", "dismiss_screen", "Close"),
-        Binding("q", "dismiss_screen", "Close")
+        Binding("q", "dismiss_screen", "Close"),
+        Binding("s", "screenshot", "Screenshot")
     ]
 
     def __init__(self, result: dict):
@@ -175,8 +177,28 @@ class FullscreenDetail(Screen):
             padding=(1, 2)
         )
 
+    def action_screenshot(self):
+        from utils import take_screenshot, can_screenshot
+
+        ok, reason = can_screenshot(self.result)
+        if not ok:
+            self.notify(f"Cat't take screenshot: {reason}", severity="error", timeout=4)
+            return
+
+        def _do():
+            success, path_or_err = take_screenshot(self.result)
+            def _notify():
+                if success:
+                    self.notify(f"✓ Saved: {path_or_err}", severity="information", timeout=5)
+                else:
+                    self.notify(f"✗ Gagal: {path_or_err}", severity="error", timeout=4)
+            self.app.call_from_thread(_notify)
+
+        threading.Thread(target=_do, daemon=True).start()
+        self.notify("Taking screenshot...", timeout=2)
+
     def action_dismiss_screen(self):
-        self.app.pop_screen()
+            self.app.pop_screen()
 
 #Helper
 def _make_table():
