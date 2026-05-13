@@ -83,6 +83,10 @@ class FullscreenDetail(Screen):
             else:
                 sections.append(Text("  No open ports detected", style="#565F89"))
 
+        # Honeypot
+        sections.append(Rule(title="[bold #00A3FF]HONEYPOT ANALYSIS[/]", style="#1A1B26"))
+        sections.append(self._honeypot_analysis(r))
+
         # Deep Scan Results
         deep_data = r.get("deep_scan")
         if deep_data:
@@ -137,10 +141,6 @@ class FullscreenDetail(Screen):
         else:
             sections.append(Text("  No tech detected", style="#565F89"))
 
-        # Honeypot
-        sections.append(Rule(title="[bold #00A3FF]Security Analysis[/]", style="#1A1B26"))
-        sections.append(self._honeypot_analysis(r))
-
         # Headers http
         sections.append(Rule(title="[bold #00A3FF]HTTP Headers[/]", style="#1A1B26"))
         h_header = http.get("raw_header") or {}
@@ -194,8 +194,6 @@ class FullscreenDetail(Screen):
         badges = []
         if wildcard:
             badges += "  [#00E0FF]◈ Wildcard[/]"
-        if score > 0:
-            badges += f"  [#BB9AF7]🍯 {score * 100:.0f}% {label}[/]"
 
         extra_info = " ".join(badges)
         identity.add_row(f"[italic #00A3FF]{ip}[/]", extra_info)
@@ -250,34 +248,33 @@ class FullscreenDetail(Screen):
     def _honeypot_analysis(result: dict):
         score = result.get("honeypot_score", 0)
         label = result.get("honeypot_label", "Unlikely")
-
-        filled = int(score * 10)
-        bar = ""
-        for i in range(10):
-            if i < filled:
-                if i < 3:
-                    bar += "[#00E0FF]█[/]"
-                elif i < 6:
-                    bar += "[#00C8FF]█[/]"
-                else:
-                    bar += "[#00A3FF]█[/]"
-            else:
-                bar += "[#1A1B26]░[/]"
-
-        text_color = "#F7768E" if score >= 0.75 else "#FFD700" if score >= 0.5 else "#565F89"
-
-        honey_table = _make_table()
-        honey_table.add_row("Score", f"{bar} [{text_color}]{score * 100:.0f}%[/]")
-        honey_table.add_row("Label", f"[{text_color} bold]{label}[/]")
-
         findings = result.get("honeypot_findings", [])
+
+        width = 30
+        filled = int(score * width)
+        bar = ""
+        for i in range(width):
+            if i < filled:
+                color = "#00E0FF" if i < (width * 0.5) else "#00A3FF"
+                bar += f"[{color}]█[/]"
+            else:
+                bar += "[#292a3a]█[/]"
+
+        text_color = "#F7768E" if score >= 0.75 else "#FFD700" if score >= 0.5 else "#73DACA"
+
+        analysis = Table.grid(padding=(0, 1))
+        analysis.add_column()
+        analysis.add_row(bar)
+        analysis.add_row(f"[bold {text_color}]{score * 100:.0f}% ―  {label}[/]")
+
         if findings:
-            honey_table.add_row("", "")
             for f in findings:
-                honey_table.add_row("[#565F89]Finding[/]", f[:70])
 
-        return honey_table
+                analysis.add_row(f"[#BB9AF7]● [/] [{text_color}]{f[:80]}[/]")
+        else:
+            analysis.add_row(" [#565F89]○ No suspicious bait detected[/]")
 
+        return analysis
     def action_screenshot(self):
         def refresh():
             self.query_one(
