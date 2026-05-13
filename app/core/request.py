@@ -40,22 +40,6 @@ def send_request(proto: str ,sub: str, timeout: float, custom_dns: str = None, a
         )
 
         return res
-
-        body_hash = hashlib.md5(res.content).hexdigest() if res.content else "d41d8cd98f00b204e9800998ecf8427e"
-
-        request_dict = {
-            "title": get_html_title(res),
-            "status": res.status_code,
-            "server": res.headers.get('Server', 'Unknown'),
-            "location": res.headers.get("Location", "-"),
-            "latency": int(res.elapsed.total_seconds() * 1000),
-            "size": len(res.content),
-            "timestamp": res.headers.get('Date'),
-            "header": res.headers,
-            "body_hash": body_hash,
-            "header_keys": list(res.headers.keys())
-        }
-        return request_dict
     except Exception as e:
         log.debug(f"send_request failed [{proto}] {sub}: {type(e).__name__} - {e}")
         return None
