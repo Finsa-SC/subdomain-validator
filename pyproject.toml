@@ -8,6 +8,7 @@ dependencies = [
     "dotenv>=0.9.9",
     "fake-useragent>=2.2.0",
     "ijson>=3.5.0",
+    "playwright>=1.59.0",
     "pyperclip>=1.11.0",
     "python-dotenv>=1.2.2",
     "requests>=2.33.1",
