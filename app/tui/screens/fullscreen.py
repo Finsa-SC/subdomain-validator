@@ -1,3 +1,5 @@
+import token
+
 from textual import work
 from textual.screen import ModalScreen
 from textual.widgets import Input
@@ -178,21 +180,33 @@ class FullscreenDetail(Screen):
         score = result.get("honeypot_score", 0)
         label = result.get("honeypot_label", "Unlikely")
 
-        identity = Table.grid(padding=(0, 2))
-        identity.add_column(justify="center")
-        identity.add_row(f"[bold #00E0FF]{subdomain}[/]")
-        identity.add_row(f"[italic #00A3FF]{ip}[/]")
-
         status_color = "#73DACA" if is_live else "#565F89"
-        status_line = f"[{status_color}]{'● Live' if is_live else '● Offline'}[/]"
+        status_text = "● Live" if is_live else "● Offline"
+
+        identity = Table.grid(expand=True)
+        identity.add_column(justify="left", ratio=1)
+        identity.add_column(justify="right", vertical='top')
+        sub_display = f"[bold #00E0FF underline]{subdomain}[/]"
+        status_display = f"[{status_color}]{status_text}[/]"
+
+        identity.add_row(sub_display, status_display)
+
+        badges = []
         if wildcard:
-            status_line += "  [#00E0FF]◈ Wildcard[/]"
+            badges += "  [#00E0FF]◈ Wildcard[/]"
         if score > 0:
-            status_line += f"  [#BB9AF7]🍯 {score * 100:.0f}% {label}[/]"
-        identity.add_row(status_line)
+            badges += f"  [#BB9AF7]🍯 {score * 100:.0f}% {label}[/]"
 
-        return Panel(identity, border_style="#00A3FF", padding=(0, 1))
+        extra_info = " ".join(badges)
+        identity.add_row(f"[italic #00A3FF]{ip}[/]", extra_info)
 
+        return Panel(
+            identity,
+            border_style="#00A3FF",
+            padding=(1, 2),
+            title="[#565F89]Target Identity[/]",
+            title_align="left"
+        )
     @staticmethod
     def _protocol_comparison(http: dict, https: dict) -> Table:
         def _create_proto_table(target_data):
