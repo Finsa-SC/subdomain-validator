@@ -203,11 +203,11 @@ class FullscreenDetail(Screen):
 
             status = _format_status_colored(result.get("status"))
             table.add_row("Status", status)
-            table.add_row("Server", (http.get("server") or "-")[:18])
-            table.add_row("Latency", f"{http.get('latency')}ms" if http.get("latency") else "N/A")
-            table.add_row("Size", f"{http.get('size', 0):,} B")
-            table.add_row("Title", (http.get("title") or "-")[:18])
-            table.add_row("Tech", ", ".join(http.get("tech", [])[:2]) or "-")
+            table.add_row("Server", (result.get("server") or "-")[:18])
+            table.add_row("Latency", f"{result.get('latency')}ms" if result.get("latency") else "N/A")
+            table.add_row("Size", f"{result.get('size', 0):,} B")
+            table.add_row("Title", (result.get("title") or "-")[:18])
+            table.add_row("Tech", ", ".join(result.get("tech", [])[:2]) or "-")
             return table
 
         # HTTP Panel
