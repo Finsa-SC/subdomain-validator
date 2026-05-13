@@ -1,15 +1,83 @@
 ##Module Function
 from .request import send_request
-from analysis import HoneypotAnalyzer
 from models import get_config
-from utils import get_logger
+from utils import get_logger, scan_port
 
 ##Module Package
+import hashlib
+import html as html_module
+import re
 import socket
 import random
 import time
 
+
 log = get_logger("validate")
+
+TECH_SIGNATURES = {
+    "Cloudflare": ["cloudflare", "cf-ray"],
+    "PHP": ["x-powered-by: php", "php/"],
+    "WordPress": ["wordpress", "wp-"],
+    "Nginx": ["nginx"],
+    "Apache": ["apache"],
+    "Laravel": ["laravel_session", "laravel"],
+    "Django": ["csrftoken"],
+    "ASP.NET": ["x-aspnet-version", "x-powered-by: asp.net"],
+    "Node.js": ["x-powered-by: express"],
+    "Varnish": ["x-varnish", "via: varnish"],
+    "IIS": ["microsoft-iis"],
+}
+
+def _detech_tech(header: dict) -> list[str]:
+    if not header:
+        return []
+    header_str = " ".join(
+        f"{k.lower()}: {v.lower()}" for k, v in header.items()
+    )
+    return sorted(
+        name for name, kws in TECH_SIGNATURES.items()
+        if any(kw in header_str for kw in kws)
+    )
+
+def _extract_title(res) -> str:
+    try:
+        res.encoding = res.charset_encoding or "utf-8"
+        match = re.search(f"<title>(.*?)</title>", res.text, re.IGNORECASE | re.DOTALL)
+        if match:
+            title = html_module.unescape(match.group(1).strip())
+            return title.replace("\n", " ").replace("\r", "")
+        return "-"
+    except Exception:
+        return "-"
+
+def parse_response(res, error: str | None) -> dict:
+    if res is None:
+        return {"status": error or "CONN_ERR"}
+
+    try:
+        body_hash = (
+            hashlib.md5(res.content).hexdigest()
+            if res.content
+            else "d41d8cd98f00b204e9800998ecf8427e"
+        )
+        raw_headers = dict(res.headers)
+
+        return {
+            "status": res.status_code,
+            "title": _extract_title(res),
+            "server": res.headers.get("Server", "Unknown"),
+            "location": res.headers.get("Location", "-"),
+            "latency": int(res.elapsed.total_seconds() * 1000),
+            "size": len(res.content),
+            "timestamp": res.headers.get("Date"),
+            "raw_header": raw_headers,
+            "body_hash": body_hash,
+            "header_keys": list(res.headers.keys()),
+            "tech": _detech_tech(raw_headers),
+        }
+    except Exception as e:
+        log.error(f"Parse_response error: {e}")
+        return {"status": "CONN_ERR"}
 
 def validate_subdomain(sub, wildcard_baseline):
     config = get_config()
@@ -25,33 +93,19 @@ def validate_subdomain(sub, wildcard_baseline):
 
         custom_dns = config.dns
 
-        dict_http = send_request("http", sub, config.timeout, custom_dns)
-        dict_https = send_request("https", sub, config.timeout, custom_dns)
+        http_res, http_err = send_request("http", sub, config.timeout, custom_dns)
+        https_res, https_err = send_request("https", sub, config.timeout, custom_dns)
 
-        h = dict_http if dict_http else {}
-        s = dict_https if dict_https else {}
-
-        timestamp = h.get("timestamp") or s.get("timestamp")
+        h = parse_response(http_res, http_err)
+        s = parse_response(https_res, https_err)
 
         http_status = h.get("status")
-        http_server = h.get("server", "Unknown")
-        http_latency = h.get("latency")
-        http_size = h.get("size", b"")
-        http_redir = h.get("location", "-")
         http_title = h.get("title", "")
-        http_header = h.get("header") if h.get("header") is not None else {}
-        http_keys = h.get("header") or []
-        http_hash = h.get("body_hash")
-
+        http_size = h.get("size", 0) or 0
         https_status = s.get("status")
-        https_server = s.get("server", "Unknown")
-        https_latency = s.get("latency")
-        https_size = s.get("size", b"")
-        https_redir = s.get("location", "-")
         https_title = s.get("title", "")
-        https_header = s.get("header") if s.get("header") is not None else {}
-        https_keys = s.get("header") or []
-        https_hash = s.get("body_hash")
+        https_size = s.get("size", 0) or 0
+        timestamp = h.get("timestamp") or s.get("timestamp")
 
         ##Size filtering
         if size_filtering(http_size, https_size):
@@ -87,28 +141,43 @@ def validate_subdomain(sub, wildcard_baseline):
             "http": {
                 "status": http_status,
                 "title": http_title,
-                "server": http_server,
-                "size": http_size if http_size else 0,
-                "latency": http_latency,
-                "redir": http_redir,
-                "tech": http_header,
-                "body_hash": http_hash,
-                "header_keys": http_keys
+                "server": h.get("server", "Unknown"),
+                "size": http_size,
+                "latency": h.get("latency"),
+                "redir": h.get("location", "-"),
+                "tech": h.get("tech", []),
+                "raw_header": h.get("raw_header", {}),
+                "body_hash": h.get("body_hash"),
+                "header_keys": h.get("header_keys", []),
             },
             "https": {
                 "status": https_status,
                 "title": https_title,
-                "server": https_server,
-                "size": https_size if https_size else 0,
-                "latency": https_latency,
-                "redir": https_redir,
-                "tech": https_header,
-                "body_hash": https_hash,
-                "header_keys": https_keys
+                "server": s.get("server", "Unknown"),
+                "size": https_size,
+                "latency": s.get("latency"),
+                "redir": s.get("location", "-"),
+                "tech": s.get("tech", []),
+                "raw_header": s.get("raw_header", {}),
+                "body_hash": s.get("body_hash"),
+                "header_keys": s.get("header_keys", []),
             },
-            "signing": signing,
-            "wildcard": is_any_wildcard
+            "signing": sign(http_status, https_status, is_any_wildcard),
+            "wildcard": is_any_wildcard,
         }
+
+        if config.port:
+            ports = scan_port(sub, config.port)
+            if ports:
+                data["ports"] = ports
+
+        if config.screenshot:
+            from utils import take_screenshot, can_screenshot
+            ok, reason = can_screenshot(data)
+            if ok:
+                success, path_or_err = take_screenshot(data)
+                if success:
+                    data["screenshot"] = path_or_err
 
         status_ok = 200 in [http_status, https_status]
 
