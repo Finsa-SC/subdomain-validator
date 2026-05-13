@@ -188,5 +188,39 @@ def _build_summary(found: list[dict]) -> dict[str, str]:
         if tech not in summary:
             summary[tech] = version
         elif summary[tech] == 'detected' and version != 'detected':
-            summary[tech] == version
+            summary[tech] = version
     return summary
+
+def detect_version(result: dict, timeout: float = 8.0) -> dict:
+    all_found = []
+
+    #scan header
+    for proto in ("http", "https"):
+        header = result.get(proto, {}).get("raw_header") or {}
+        hits = _scan_headers(header)
+        for hit in hits:
+            all_found.append({**hit, "proto": proto.upper()})
+
+    #fetch body
+    body = _fetch_body(result, timeout)
+    body_hits = _scan_body(body) if body else []
+    for hit in body_hits:
+        all_found.append({**hit, "proto": "BODY"})
+
+    deduped = {}
+    for item in all_found:
+        key = item['tech']
+        if key not in deduped:
+            deduped[key] = item
+        elif deduped[key]['version'] == 'detected' and item['version'] != 'detected':
+            deduped[key] = item
+
+    final = list(deduped.values())
+    summary = _build_summary(final)
+    log.info(f"{result.get('subdomain')}: tech versions → {summary}")
+
+    return {
+        "found": final,
+        "summary": summary,
+        "body_fetched": body is not None,
+    }
