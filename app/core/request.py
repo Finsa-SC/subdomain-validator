@@ -14,7 +14,7 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 stealth = StealthMode()
 log = get_logger("request")
 
-def send_request(proto: str ,sub: str, time_out: float, custom_dns: str = None) -> dict:
+def send_request(proto: str ,sub: str, timeout: float, custom_dns: str = None, allow_redirects: bool = False) -> requests.Response | None:
     try:
         stealth_header, browser_engine = stealth.get_payload()
 
@@ -23,23 +23,23 @@ def send_request(proto: str ,sub: str, time_out: float, custom_dns: str = None) 
             ip = resolve_ip(sub, dns_ip, 'A') or resolve_ip(sub, dns_ip, 'AAAA')
             if ip:
                 formated_ip = f"[{ip}]" if ":" in ip else ip
-                sub_url = f"{proto}://{formated_ip}"
+                url = f"{proto}://{formated_ip}"
                 stealth_header["Host"] = sub
             else:
-                return {"status": "DNS Error!!"}
+                return None
         else:
-            sub_url = f"{proto}://{sub}"
+            url = f"{proto}://{sub}"
 
-        req_kwargs = {
-            "url":sub_url,
-            "timeout": time_out,
-            "headers": stealth_header,
-            "impersonate": browser_engine,
-            "allow_redirects": False,
-            "verify": False
-        }
+        res = requests.get(
+            url=url,
+            timeout=timeout,
+            headers=stealth_header,
+            impersonate=browser_engine,
+            allow_redirects=allow_redirects,
+            verify=False,
+        )
 
-        res = requests.get(**req_kwargs)
+        return res
 
         body_hash = hashlib.md5(res.content).hexdigest() if res.content else "d41d8cd98f00b204e9800998ecf8427e"
 
@@ -56,14 +56,50 @@ def send_request(proto: str ,sub: str, time_out: float, custom_dns: str = None) 
             "header_keys": list(res.headers.keys())
         }
         return request_dict
-    except requests.errors.RequestsError as e:
-        err_msg = str(e).upper()
-        if "SSL" in err_msg or "CERTIFICATE" in err_msg:
-            return {"status": "SSL_ERR"}
-        return {"status": "CONN_ERR"}
     except Exception as e:
-        log.error(f"[DEBUG] Error detail for {sub}: {type(e).__name__} - {e}")
-        return {"status": "CONN_ERR"}
+        log.debug(f"send_request failed [{proto}] {sub}: {type(e).__name__} - {e}")
+        return None
+
+def send_request_with_error(
+        proto: str,
+        sub: str,
+        timeout: float,
+        custom_dns: str = None,
+        allow_redirects: bool = False,
+    ) -> tuple[requests.Response | None, str | None]:
+    try:
+        stealth_header, browser_engine = stealth.get_payload()
+
+        if custom_dns:
+            dns_ip = DNS_PROVIDERS.get(custom_dns.lower(), custom_dns)
+            ip = resolve_ip(sub, dns_ip, "A") or resolve_ip(sub, dns_ip, "AAAA")
+            if ip:
+                formatted_ip = f"[{ip}]" if ":" in ip else ip
+                url = f"{proto}://{formatted_ip}"
+                stealth_header["Host"] = sub
+            else:
+                return None, "DNS_ERR"
+        else:
+            url = f"{proto}://{sub}"
+        res = requests.get(
+            url=url,
+            timeout=timeout,
+            headers=stealth_header,
+            impersonate=browser_engine,
+            allow_redirects=allow_redirects,
+            verify=False,
+        )
+        return res, None
+
+    except requests.errors.RequestsError as e:
+        err = str(e).upper()
+        if "SSL" in err or "CERTIFICATE" in err:
+            return None, "SSL_ERR"
+        return None, "CONN_ERR"
+    except Exception as e:
+        log.error(f"send_request_with_error [{proto}] {sub}: {type(e).__name__} - {e}")
+        return None, "CONN_ERR"
+
 
 def get_html_title(res):
     res.encoding = res.charset_encoding or "utf-8"
