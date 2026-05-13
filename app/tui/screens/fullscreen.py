@@ -10,8 +10,6 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 from rich.rule import Rule
-from ..widgets.subdomain_table import _normalize_status
-from ..widgets.detail_panel import _format_redirect
 from utils import do_screenshot, parse_port, scan_port, get_logger
 
 log = get_logger("fullscreen")
@@ -171,7 +169,8 @@ class FullscreenDetail(Screen):
             padding=(1, 2)
         )
 
-    def _header_identity(self, result: dict) -> Panel:
+    @staticmethod
+    def _header_identity(result: dict) -> Panel:
         subdomain = result.get("subdomain", "")
         ip = result.get("ip_address", "No IP")
         is_live = result.get("is_live", False)
@@ -197,9 +196,9 @@ class FullscreenDetail(Screen):
     @staticmethod
     def _protocol_comparison(http: dict, https: dict) -> Table:
         def _create_proto_table(target_data):
-            table = Table.grid(padding=(0, 1))
-            table.add_column(style="#565F89", justify="right", width=10)
-            table.add_column(style="#00E0FF", width=20)
+            table = Table.grid(padding=(0, 1), expand=True)
+            table.add_column(style="#565F89", justify="left", width=10)
+            table.add_column(style="#00E0FF", justify="right")
 
             status = _format_status_colored(target_data.get("status"))
             table.add_row("Status", status)
@@ -321,10 +320,10 @@ class FullscreenDetail(Screen):
 
 #Helper
 def _make_table():
-    t = Table.grid(padding=(0, 2))
-    t.add_column(style="#565F89", justify="right", min_width=14)
-    t.add_column(style="#00E0FF", min_width=40)
-    return t
+    table = Table.grid(padding=(0, 2))
+    table.add_column(style="#565F89", justify="right", min_width=14)
+    table.add_column(style="#00E0FF", min_width=40)
+    return table
 
 def _section_rule(title: str):
     return Rule(title=f"[bold #00A3FF]{title}[/]", style="#1A1B26")
