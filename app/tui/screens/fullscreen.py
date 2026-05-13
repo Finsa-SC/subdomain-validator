@@ -196,18 +196,18 @@ class FullscreenDetail(Screen):
 
     @staticmethod
     def _protocol_comparison(http: dict, https: dict) -> Table:
-        def _create_proto_table(result):
+        def _create_proto_table(target_data):
             table = Table.grid(padding=(0, 1))
             table.add_column(style="#565F89", justify="right", width=10)
             table.add_column(style="#00E0FF", width=20)
 
-            status = _format_status_colored(result.get("status"))
+            status = _format_status_colored(target_data.get("status"))
             table.add_row("Status", status)
-            table.add_row("Server", (result.get("server") or "-")[:18])
-            table.add_row("Latency", f"{result.get('latency')}ms" if result.get("latency") else "N/A")
-            table.add_row("Size", f"{result.get('size', 0):,} B")
-            table.add_row("Title", (result.get("title") or "-")[:18])
-            table.add_row("Tech", ", ".join(result.get("tech", [])[:2]) or "-")
+            table.add_row("Server", (target_data.get("server") or "-")[:18])
+            table.add_row("Latency", f"{target_data.get('latency')}ms" if target_data.get("latency") else "N/A")
+            table.add_row("Size", f"{target_data.get('size', 0):,} B")
+            table.add_row("Title", (target_data.get("title") or "-")[:18])
+            table.add_row("Tech", ", ".join(target_data.get("tech", [])[:2]) or "-")
             return table
 
         # HTTP Panel
@@ -279,33 +279,31 @@ class FullscreenDetail(Screen):
             callback=refresh
         )
 
+    @work(thread=True)
+    def _run_port_scan_worker(self, value):
+        ports = parse_port(value)
+        self.notify(f"Scanning {len(ports)} ports...")
+        result = scan_port(
+            self.result["subdomain"],
+            ports
+        )
+        self.result["ports"] = result
+        self._refresh_detail()
+
+
+    @work(thread=True)
     def action_scan_port(self):
         def handle_input(value):
             if not value:
                 return
-            ports = parse_port(value)
-            self.notify(f"Scanning {len(ports)} ports...")
-            result = scan_port(
-                self.result["subdomain"],
-                ports
-            )
-            self.result["ports"] = result
-
-            self.query_one(
-                "#fullscreen-content",
-                Static
-            ).update(self._build_content())
-
-        self.app.push_screen(
-            PortInputModal(),
-            callback=handle_input
-        )
+            self._run_port_scan_worker(value)
+        self.app.push_screen(PortInputModal(), callback=handle_input)
 
     @work(thread=True)
     def action_deep_scan(self):
         from analysis import run_deep_scan
         def on_module_done(key, states):
-            self._refresh_detail()
+            self.app.call_from_thread(self._refresh_detail)
         self.notify("Starting Deep Scan...", title="Deep Scanning")
 
         run_deep_scan(self.result, on_module_done)
