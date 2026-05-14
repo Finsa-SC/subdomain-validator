@@ -5,7 +5,6 @@ import platform, os, subprocess, random
 
 from models.signatures import TITLE_IGNORE
 from .logger import get_logger
-from core import StealthMode
 
 log = get_logger("screenshotter")
 
@@ -40,6 +39,7 @@ def _pick_url(result: dict) -> str:
     return f"http://{subdomain}"
 
 def take_screenshot(result: dict, open_image: bool = False):
+    from core import StealthMode
     ok, reason = can_screenshot(result)
     if not ok:
         return False, reason
