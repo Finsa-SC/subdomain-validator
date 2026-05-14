@@ -112,11 +112,6 @@ def validate_subdomain(sub, wildcard_baseline):
         https_size = s.get("size", 0) or 0
         timestamp = h.get("timestamp") or s.get("timestamp")
 
-        ##Size filtering
-        if size_filtering(http_size, https_size):
-            data = {"subdomain": sub, "signing": "[F]", "status": "Filtered (Size)"}
-            return False, ip_address, data
-
         ##Validate Wildcard
         baselines = wildcard_baseline
         http_wildcard = False
@@ -202,25 +197,6 @@ def humane_sleep(base_delay: float):
         time.sleep(actual_delay)
     else:
         time.sleep(random.uniform(0.1, 0.5))
-
-def size_filtering(http_size: int = 0, https_size: int = 0) -> bool:
-    config = get_config()
-
-    max_size = config.max_size
-    min_size = config.min_size
-
-    if isinstance(http_size, bytes):
-        http_size = len(http_size)
-    if isinstance(https_size, bytes):
-        https_size = len(https_size)
-
-    if min_size is not None and min_size > -1:
-        if (http_size <= 0 or http_size < min_size) and (https_size <= 0 or https_size < min_size):
-            return True
-    if max_size is not None and max_size > 0:
-        if (http_size <= 0 or http_size > max_size) and (https_size <= 0 or https_size > max_size):
-            return True
-    return False
 
 def sign(http_status, https_status, is_wildcard) -> str:
     if is_wildcard:
