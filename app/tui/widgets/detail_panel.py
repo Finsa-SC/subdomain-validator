@@ -1,3 +1,5 @@
+from os import lstat
+
 from textual.widgets import Static
 from rich.panel import Panel
 from rich.table import Table
@@ -35,46 +37,33 @@ class DetailPanel(Static):
             padding=(0, 1)
         )
 
-        http = result.get("http", {})
-        https = result.get("https", {})
-        h_lat = http.get("latency")
-        s_lat = https.get("latency")
-        h_redir = http.get("redir")
-        s_redir = https.get("redir")
-        h_st = http.get("status")
-        s_st = https.get("status")
-        h_sz = http.get("size")
-        s_sz = https.get("size")
-        h_tech = http.get("tech")
-        s_tech = https.get("tech")
+        def protocol_detail(protocol: str):
+            proto = result.get(protocol, {})
+            latency = proto.get("latency")
+            redir = proto.get("redir")
+            status = proto.get("status")
+            size = proto.get("size")
+            tech = proto.get("tech")
+            server = proto.get("server", "Unknown")
+            title = proto.get("title", '-')
 
-        h_st = _normalize_status(h_st)
-        s_st = _normalize_status(s_st)
-        h_redir = _format_redirect(h_redir, subdomain)
-        s_redir = _format_redirect(s_redir)
+            status = _normalize_status(status)
+            redir = _format_redirect(redir, subdomain)
 
-        detail_table.add_row("", "")
-        detail_table.add_row("[bold]HTTP", "")
-        detail_table.add_row("  Status:", str(h_st))
-        detail_table.add_row("  Server:", http.get("server", "Unknown"))
-        detail_table.add_row("  Latency:", f"{h_lat}ms" if h_lat is not None else "N/A")
-        detail_table.add_row("  Size:", f"{h_sz}B" if h_sz is not None else "0")
-        detail_table.add_row("  Redirect to:", f"{h_redir}")
-        detail_table.add_row("  Title:", http.get("title", "-"))
-        detail_table.add_row(
-            "  Tech:", ","
-                       " ".join(t.split(':')[0].split(' ')[0] for t in h_tech[:3]))
+            detail_table.add_row("", "")
+            detail_table.add_row("[bold]HTTP", "")
+            detail_table.add_row("  Status:", str(status))
+            detail_table.add_row("  Server:", server)
+            detail_table.add_row("  Latency:", f"{latency}ms" if latency is not None else "N/A")
+            detail_table.add_row("  Size:", f"{size}B" if size is not None else "0")
+            detail_table.add_row("  Redirect to:", f"{redir}")
+            detail_table.add_row("  Title:", title)
+            detail_table.add_row(
+                "  Tech:", ","
+                           " ".join(t.split(':')[0].split(' ')[0] for t in tech[:5]))
 
-        detail_table.add_row("", "")
-        detail_table.add_row("[bold]HTTPS", "")
-        detail_table.add_row("  Status:", str(s_st))
-        detail_table.add_row("  Server:", https.get("server", "Unknown"))
-        detail_table.add_row("  Latency:", f"{s_lat}ms" if s_lat is not None else "N/A")
-        detail_table.add_row("  Size:", f"{s_sz}B" if s_sz is not None else "0")
-        detail_table.add_row("  Redirect to:", f"{s_redir}")
-        detail_table.add_row("  Title:", https.get("title", "-"))
-        detail_table.add_row("  Tech:", ", ".join(s_tech[:3]))
-
+        protocol_detail('http')
+        protocol_detail('https')
 
         score = result.get("honeypot_score")
         if score is None:
