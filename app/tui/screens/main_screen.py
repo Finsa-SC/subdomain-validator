@@ -76,6 +76,9 @@ class MainScreen(Screen):
         if event.input.id == "filter-input":
             self.apply_filter()
 
+            table = self.query_one("#subdomain-table", SubdomainTable)
+            table.focus()
+
     def apply_filter(self):
         filter_input = self.query_one("#filter-input", Input)
         query = filter_input.value
