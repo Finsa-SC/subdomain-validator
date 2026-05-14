@@ -6,7 +6,6 @@ from curl_cffi import requests
 import html
 import urllib3
 import re
-import hashlib
 import dns.resolver
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)

@@ -1,10 +1,11 @@
 from pathlib import Path
 import threading
 import sys
+import platform, os, subprocess, random
 
 from models.signatures import TITLE_IGNORE
 from .logger import get_logger
-import platform, os, subprocess
+from core import StealthMode
 
 log = get_logger("screenshotter")
 
@@ -46,6 +47,9 @@ def take_screenshot(result: dict, open_image: bool = False):
     subdomain = result.get("subdomain", "")
     url = _pick_url(result)
 
+    stealth = StealthMode()
+    header, engine = stealth.get_payload()
+
     save_name = subdomain.replace(".", "_").replace("/", "_")
     screenshot_dir.mkdir(parents=True, exist_ok=True)
     out_path = screenshot_dir / f"{save_name}.png"
@@ -53,9 +57,12 @@ def take_screenshot(result: dict, open_image: bool = False):
     try:
         p, browser = ensure_chromium()
 
-        page = browser.new_page()
+        page = browser.new_page(
+            user_agent=header.get('User-Agent')
+        )
+        page.set_extra_http_headers(header)
         page.goto(url, timeout=15000, wait_until="domcontentloaded")
-        page.wait_for_timeout(2000)
+        page.wait_for_timeout(random.uniform(2000, 4000))
         page.screenshot(path=str(out_path), full_page=True)
 
         browser.close()
@@ -67,6 +74,7 @@ def take_screenshot(result: dict, open_image: bool = False):
         return True, str(out_path)
 
     except Exception as e:
+        log.error(f"Screenshot failed: {e}")
         return False, str(e)
 
 def open_image_popup(path: str):
@@ -81,7 +89,20 @@ def ensure_chromium():
     from playwright.sync_api import sync_playwright
     try:
         play = sync_playwright().start()
-        browser = play.chromium.launch(args=["--no-sandbox", "--disable-dev-shm-usage"])
+        args = [
+            "--no-sandbox",
+            "--disable-dev-shm-usage",
+            "--disable-blink-features=AutomationControlled"
+        ]
+
+        if random.random() > 0.5:
+            args.append('--disable-gpu')
+
+        proxy_url = os.getenv('PROXY_URL', None)
+        browser = play.chromium.launch(
+            args=args,
+            proxy={'server': proxy_url} if proxy_url else None
+        )
         return play, browser
     except Exception:
         log.error("Chromium not found! Installing...")
@@ -91,7 +112,16 @@ def ensure_chromium():
         )
         log.info("Chromium installed!")
         play = sync_playwright().start()
-        browser = play.chromium.launch(args=["--no-sandbox", "--disable-dev-shm-usage"])
+        args = [
+            "--no-sandbox",
+            "--disable-dev-shm-usage",
+            "--disable-blink-features=AutomationControlled"
+        ]
+        proxy_url = os.getenv('PROXY_URL', None)
+        browser = play.chromium.launch(
+            args=args,
+            proxy={'server': proxy_url} if proxy_url else None
+        )
         return play, browser
 
 def do_screenshot(app, result: dict, notify=None, callback=None):
