@@ -12,7 +12,7 @@ THREAD = int(os.getenv("THREAD", 5))
 DEBUG = os.getenv("DEBUG", "false").lower().strip() == "true"
 DELAY = float(os.getenv("DELAY", 0.0))
 
-VERSION = "1.2.0"
+VERSION = "1.0.0"
 
 def main():
     temp_path = None

@@ -61,7 +61,9 @@ class DetailPanel(Static):
         detail_table.add_row("  Size:", f"{h_sz}B" if h_sz is not None else "0")
         detail_table.add_row("  Redirect to:", f"{h_redir}")
         detail_table.add_row("  Title:", http.get("title", "-"))
-        detail_table.add_row("  Tech:", ", ".join(h_tech[:3]))
+        detail_table.add_row(
+            "  Tech:", ","
+                       " ".join(t.split(':')[0].split(' ')[0] for t in h_tech[:3]))
 
         detail_table.add_row("", "")
         detail_table.add_row("[bold]HTTPS", "")
