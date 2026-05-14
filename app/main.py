@@ -38,7 +38,7 @@ def main():
         banner = "[ Subv ]"
     parser = argparse.ArgumentParser(
         prog="subv",
-        description=f"{banner}\nSubdomain recon tool - FinSky IT Solutions",
+        description=f"{banner}\nSubdomain recon tool - FinSky IT Solutions\nsubv {VERSION}",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="[!] WARNING: Use with caution. Scanning will trigger logs on the target server."
     )
