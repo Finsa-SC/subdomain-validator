@@ -15,8 +15,8 @@ class ScanConfig:
     no_wildcard: bool = False
     available: bool = True
     live: bool = True
+    ip_address: str = None
     query: str = None
-
 
     # --- Profiling --- #
     honeypot: bool = False

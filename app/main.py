@@ -66,9 +66,7 @@ def main():
     filter_group.add_argument("-L", "--live", action="store_true", help="Only show domain with 200 status code")
     filter_group.add_argument("-w", "--no-wildcard", action="store_true", help="Skip if wildcard DNS detected")
     filter_group.add_argument("--ip", action="store_true", help="Show IP address instead of subdomain")
-    filter_group.add_argument("--color", action="store_true", help="Color output text")
-    filter_group.add_argument("--min-size", type=int, help="Filter response smaller than N bytes")
-    filter_group.add_argument("--max-size", type=int, help="Filter response larger than N bytes")
+    filter_group.add_argument("-q", "--query", action="store_true",  help="Filter query (e.g. 'status:200 server:nginx NOT honeypot:true')")
 
     # 4. EXPORT OPTIONS
     export_group = parser.add_argument_group('EXPORT OPTIONS')
@@ -79,7 +77,6 @@ def main():
     profile_group = parser.add_argument_group('PROFILING & ANALYSIS')
     profile_group.add_argument("--honeypot", action="store_true", help="Enable smart fingerprinting")
     profile_group.add_argument("--screenshot", action="store_true", help="Take screenshot to each subdomain with 200 status code")
-
 
     if len(sys.argv) == 1:
         parser.print_help()
@@ -98,6 +95,14 @@ def main():
 
     args = parser.parse_args()
 
+    filter_query = args.query or ""
+    if args.no_wildcard:
+        filter_query += " wildcard:no"
+    if args.available:
+        filter_query += " status:200,301,302,307,308"
+    if args.ip:
+        filter_query += f" ip:{args.ip}"
+
     config = ScanConfig(
         timeout=args.timeout,
         thread=args.thread,
@@ -110,7 +115,8 @@ def main():
         honeypot=args.honeypot,
         screenshot=args.screenshot,
         dns=args.dns,
-        port=parse_port(args.port)
+        port=parse_port(args.port),
+        query=filter_query
     )
 
     set_config(config)
