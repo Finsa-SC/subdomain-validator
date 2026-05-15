@@ -32,25 +32,40 @@ class ActionModal(ModalScreen):
         self._update_preview()
 
     def on_key(self, event):
-            if event.key == 'down':
-                self.current_index = (self.current_index + 1) % len(self.action)
+        mid = (len(self.action) + 1) // 2
+        if event.key == 'down':
+            self.current_index = (self.current_index + 1) % len(self.action)
+            self._render_list()
+            self._update_preview()
+            event.stop()
+        elif event.key == 'up':
+            self.current_index = (self.current_index - 1) % len(self.action)
+            self._render_list()
+            self._update_preview()
+            event.stop()
+        elif event.key == 'right':
+            if self.current_index < mid:
+                new_idx = self.current_index + mid
+                if new_idx < len(self.action):
+                    self.current_index = new_idx
+                    self._render_list()
+                    self._update_preview()
+            event.stop()
+        elif event.key == 'left':
+            if self.current_index >= mid:
+                self.current_index -= mid
                 self._render_list()
                 self._update_preview()
-                event.stop()
-            elif event.key == 'up':
-                self.current_index = (self.current_index - 1) % len(self.action)
-                self._render_list()
-                self._update_preview()
-                event.stop()
-            elif event.character and event.character.isdigit():
-                idx = int(event.character) - 1
-                if 0 <= idx < len(self.actions):
-                    self.current_index = idx
-                    self._execute_action()
-                event.stop()
-            elif event.key == "enter":
+            event.stop()
+        elif event.character and event.character.isdigit():
+            idx = int(event.character) - 1
+            if 0 <= idx < len(self.actions):
+                self.current_index = idx
                 self._execute_action()
                 event.stop()
+        elif event.key == "enter":
+             self._execute_action()
+             event.stop()
 
     def _render_list(self):
         layout = Table.grid(padding=(0, 3), expand=True)
