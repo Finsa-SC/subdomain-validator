@@ -28,15 +28,18 @@ class ActionModal(ModalScreen):
             yield Static(id="action-list")
             yield Static(id="action-preview")
     def on_mount(self):
+        self._render_list()
         self._update_preview()
 
     def on_key(self, event):
             if event.key == 'down':
                 self.current_index = (self.current_index + 1) % len(self.action)
+                self._render_list()
                 self._update_preview()
                 event.stop()
             elif event.key == 'up':
                 self.current_index = (self.current_index - 1) % len(self.action)
+                self._render_list()
                 self._update_preview()
                 event.stop()
             elif event.character and event.character.isdigit():
@@ -55,8 +58,8 @@ class ActionModal(ModalScreen):
         layout.add_column(ratio=1)
 
         mid = len(self.action) // 2
-        left_table = self._build_action_table(self.action[:mid])
-        right_table = self._build_action_table(self.action[mid:])
+        left_table = self._build_column(self.action[:mid])
+        right_table = self._build_column(self.action[mid:])
         layout.add_row(left_table, right_table)
 
         panel = Panel(
