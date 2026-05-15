@@ -8,7 +8,6 @@ from textual.screen import ModalScreen
 from textual.widgets import Input, Static
 from utils import COMMAND_TEMPLATES, launch_terminal
 
-
 class ActionModal(ModalScreen):
     BINDINGS = [
         Binding("escape", "dismiss", "Close"),
@@ -22,6 +21,7 @@ class ActionModal(ModalScreen):
         self.action = list(COMMAND_TEMPLATES.items())
         self.current_index = 0
         self.cmd_preview = ""
+        self.edit_mode = False
 
     def compose(self) -> ComposeResult:
         with Container(id="action-modal-container"):
@@ -34,10 +34,31 @@ class ActionModal(ModalScreen):
     def on_mount(self):
         self._render_list()
         self._update_preview()
-        self.focus()
+        input_widget = self.query_one("#action-input", Input)
+        input_widget.display = False
 
     def on_key(self, event):
+        input_widget = self.query_one("#action-input", Input)
+        if event.key == 'tab':
+            self.edit_mode = not self.edit_mode
+
+            if self.edit_mode:
+                input_widget.display = True
+                input_widget.focus()
+            else:
+                input_widget.display = False
+                self.focus()
+            event.stop()
+            return
+
+        if self.edit_mode:
+            if event.key == 'enter':
+                self._execute_custom_cmd(input_widget.value)
+                event.stop()
+            return
+
         mid = (len(self.action) + 1) // 2
+
         if event.key == 'down':
             self.current_index = (self.current_index + 1) % len(self.action)
             self._render_list()
@@ -76,9 +97,19 @@ class ActionModal(ModalScreen):
         right_table = self._build_column(self.action[mid:])
         layout.add_row(left_table, right_table)
 
+        help_text = (
+            "[#565F89]"
+            "↑↓←→ Navigate   •   "
+            "TAB Toggle Edit Mode   •   "
+            "ENTER Execute   •   "
+            "ESC Close"
+            "[/]"
+        )
+
         panel = Panel(
             layout,
             title="[bold #FFD700]External Tools[/]",
+            subtitle=help_text,
             border_style="#00A3FF",
             padding=(1, 2)
         )
@@ -116,15 +147,11 @@ class ActionModal(ModalScreen):
             full_cmd = template.format(target=self.target)
             self.cmd_preview = full_cmd
 
-            hint = self._get_hint(key)
-            preview_text = f"""[#00A3FF]{full_cmd}[/]
-
-            [#565F89]{hint}[/]
-
-            [#9ECE6A]Press TAB to edit • ENTER to execute • ESC to close[/]"""
-
             preview_panel = Panel(
-                Text.from_markup(preview_text),
+                Text.from_markup(
+                    full_cmd,
+                    justify='center'
+                ),
                 title="[bold #FFD700]Command[/]",
                 border_style="#565F89",
                 padding=(1, 2)
@@ -133,20 +160,6 @@ class ActionModal(ModalScreen):
 
             input_widget = self.query_one("#action-input", Input)
             input_widget.value = full_cmd
-
-    def _get_hint(self, key: str) -> str:
-        """Return hint untuk configure command"""
-        hints = {
-            "nmap_quick": "Tip: Add '-O' for OS detection, '-sV' for version detection",
-            "nmap_full": "Tip: Change '-p-' to specific ports like '-p 80,443,8080'",
-            "ffuf_dir": "Tip: Change wordlist, add '-mc 200' for status codes, '-fs SIZE'",
-            "ffuf_json": "Tip: Customize JSON body payload, change wordlist path",
-            "sqlmap": "Tip: Add '--dbs' to enumerate databases, '--tables' for tables",
-            "whois": "Tip: Standard WHOIS lookup - no customization needed",
-            "dig": "Tip: Use 'dig @8.8.8.8' for specific DNS server, '+trace' for trace route",
-            "curl_head": "Tip: Remove '-I' to see body, add '-v' for verbose output",
-        }
-        return hints.get(key, "Customize flags and wordlists as needed for your assessment")
 
     def _execute_action(self):
         if self.current_index < len(self.action):
@@ -162,7 +175,7 @@ class ActionModal(ModalScreen):
     def _execute_custom_cmd(self, custom_cmd: str):
         if custom_cmd:
             self.notify("Launch custom command", timeout=1)
-            success = self._launch_with_cmd(custom_cmd)
+            success = self._execute_custom_cmd(custom_cmd)
             if success:
                 self.app.pop_screen()
             else:
