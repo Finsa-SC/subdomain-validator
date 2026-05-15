@@ -56,6 +56,7 @@ def main():
     config_group.add_argument("--timeout", type=float, default=TIMEOUT, help="Request timeout (default: 3s)")
     config_group.add_argument("--thread", type=int, default=THREAD, help="Number of threads (default: 5)")
     config_group.add_argument("--delay", type=float, default=DELAY, help="Delay of request")
+    config_group.add_argument("--retry", type=int, help="Retry failed requests for transient/network errors (default: 0)")
     config_group.add_argument("--dns", type=str, help="Custom DNS provider (cloudflare, google, quad9, opendns) or IP")
     config_group.add_argument("--all", action="store_true", help="Use all available subdomain source enumeration")
 
@@ -128,6 +129,7 @@ def main():
         honeypot=args.honeypot,
         screenshot=args.screenshot,
         dns=args.dns,
+        retry=args.retry,
         port=parse_port(args.port),
         query=filter_query
     )
