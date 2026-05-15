@@ -14,11 +14,14 @@ COMMAND_TEMPLATES = {
     "nmap_quick": {
         "tool": nmap,
         "description": "Fast top-port discovery",
-        "command": "nmap -T4 -F {target}"},
+        "command": "nmap -T4 -F {target}",
+        "command_multi": "nmap -T4 -F -iL {file_path}"
+    },
     "nmap_full": {
         "tool": nmap,
         "description": "Full service enumeration",
-        "command": "nmap -sV -sC -p- {target}"
+        "command": "nmap -sV -sC -p- {target}",
+        "command_multi": "nmap -sV -sC -p- -iL {file_path}"
     },
     "ffuf_dir": {
         "tool": ffuf,
@@ -52,7 +55,8 @@ COMMAND_TEMPLATES = {
     "wafw00w": {
         "tool": "WAFW00F",
         "description": "Web Application Firewall fingerprinting",
-        "command": "wafw00f https://{target}"
+        "command": "wafw00f https://{target}",
+        "command_multi": "wafw00f -i {file_path}"
     },
     "searchploit": {
         "tool": "SEARCHPLOIT",
@@ -62,17 +66,20 @@ COMMAND_TEMPLATES = {
     "nicto": {
         "tool": "NIKTO",
         "description": "Web server vulnerability scanning",
-        "command": "nikto -h https://{target}"
+        "command": "nikto -h https://{target}",
+        "command_multi": "nikto -h {file_path}"
     },
     "nuclei_single": {
         "tool": "NUCLEI",
         "description": "Fast vulnerability template scanning",
-        "command": "nuclei -u https://{target}"
+        "command": "nuclei -u https://{target}",
+        "command_multi": "nuclei -l {file_path}"
     },
     "whatweb": {
         "tool": "WHATWEB",
         "description": "Next-gen web scanner technology identifier",
-        "command": "whatweb -a 3 https://{target}"
+        "command": "whatweb -a 3 https://{target}",
+        "command_multi": "whatweb --input-file={file_path} -a 3"
     },
     "theharvester": {
         "tool": "THEHARVESTER",
