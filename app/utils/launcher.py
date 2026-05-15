@@ -22,14 +22,17 @@ COMMAND_TEMPLATES = {
 def launch_terminal(action_key: str, target: str):
     template = COMMAND_TEMPLATES.get(action_key, "{target}")
     full_cmd = template.format(target=target)
+    system = platform.system()
 
-    if platform.system() == 'Windows':
-        _launch_windows(full_cmd)
-    elif platform.system() == 'Darwin':
-        _launch_macos(full_cmd)
-    elif platform.system() == 'Linux':
-        _launch_linux(full_cmd)
-    return False
+    if system == 'Windows':
+        return _launch_windows(full_cmd)
+    elif system == 'Darwin':
+        return _launch_macos(full_cmd)
+    elif system == 'Linux':
+        return _launch_linux(full_cmd)
+    else:
+        log.error(f"Unsupported platform: {system}")
+        return False
 
 def _launch_windows(cmd: str) -> bool:
     try:
