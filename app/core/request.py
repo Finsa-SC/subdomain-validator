@@ -152,6 +152,9 @@ def _do_request(
                 "FAILED TO CONNECT",
                 "EOF",
                 "NETWORK",
+                "TLSV1 ALERT INTERNAL ERROR",
+                "RECV FAILURE",
+                "EMPTY REPLY",
             ]
             if 'SSL' in err or 'CERTIFICATE' in err:
                 raise e
