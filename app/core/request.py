@@ -31,8 +31,8 @@ def send_request(
             dns_ip = DNS_PROVIDERS.get(custom_dns.lower(), custom_dns)
             ip = resolve_ip(sub, dns_ip, 'A') or resolve_ip(sub, dns_ip, 'AAAA')
             if ip:
-                formated_ip = f"[{ip}]" if ":" in ip else ip
-                url = f"{proto}://{formated_ip}"
+                formatted_ip = f"[{ip}]" if ":" in ip else ip
+                url = f"{proto}://{formatted_ip}"
                 stealth_header["Host"] = sub
             else:
                 return None
@@ -156,12 +156,13 @@ def _do_request(
             if 'SSL' in err or 'CERTIFICATE' in err:
                 raise e
             if any(x in err for x in transient):
-                log.debug(
-                    f"Retry [{retry_count+1}/{retries}] "
-                    f"timeout={timeout}s -> {url}"
-                )
-                time.sleep(0.5 * (retry_count + 1))
-                continue
+                if retry_count < retries:
+                    log.debug(
+                        f"Retry [{retry_count+1}/{retries}] "
+                        f"timeout={timeout}s -> {url}"
+                    )
+                    time.sleep(0.5 * (retry_count + 1))
+                    continue
             raise e
     raise last_error
 
