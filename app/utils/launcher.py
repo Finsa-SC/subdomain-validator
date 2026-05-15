@@ -12,42 +12,42 @@ sqlmap = "SQLMAP"
 
 COMMAND_TEMPLATES = {
     "nmap_quick": {
-        "tools": nmap,
-        "description": "Fast port scan",
+        "tool": nmap,
+        "description": "Fast top-port discovery",
         "command": "nmap -T4 -F {target}"},
     "nmap_full": {
         "tool": nmap,
-        "description": "Full port scan",
+        "description": "Full service enumeration",
         "command": "nmap -sV -sC -p- {target}"
     },
     "ffuf_dir": {
         "tool": ffuf,
-        "description": "Directory brute force",
+        "description": "Directory fuzzing",
         "command": "ffuf -u https://{target}/FUZZ -w /usr/share/wordlists/dirb/common.txt"
     },
     "ffuf_json": {
         "tool": ffuf,
-        "description": "",
+        "description": "Json payload fuzzing",
         "command": "ffuf -u https://{target} -X POST -H 'Content-Type: application/json' -d 'FUZZ'"
     },
     "sqlmap": {
         "tool": sqlmap,
-        "description": "",
+        "description": "Sql injection testing",
         "command": "sqlmap -u https://{target} --batch --banner"
     },
     "whois": {
         "tool": "WHOIS",
-        "description": "",
+        "description": "Domain ownership lookup",
         "command": "whois {target}"},
     "dig": {
         "tool": "DIG",
-        "description": "",
+        "description": "DNS record inspection",
         "command": "dig any {target} +short"
     },
     "curl_head": {
         "tool": "CURL",
-        "description": "",
-        "command": "curl -I https://{target}}"
+        "description": "HTTP header inspection",
+        "command": "curl -I https://{target}"
     }
 }
 
