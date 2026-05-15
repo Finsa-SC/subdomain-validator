@@ -2,7 +2,7 @@ import sys
 from textual.app import App
 from textual.binding import Binding
 
-from screens.action_screen import ActionModal
+from .screens.action_screen import ActionModal
 from .screens.main_screen import MainScreen
 from core import app_state
 
