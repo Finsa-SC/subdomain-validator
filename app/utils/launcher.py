@@ -24,17 +24,22 @@ def launch_terminal(action_key: str, target: str):
     full_cmd = template.format(target=target)
 
     if platform.system() == 'Windows':
-        cmd_str = f"echo SUGGESTED COMMAND: & echo {full_cmd} & echo. & echo {full_cmd}"
-        try:
-            subprocess.Popen(["cmd", "/c", f"start cmd /k \"{cmd_str}\""], shell=True)
-            return True
-        except Exception as e:
-            log.error(f"Failed to launch command prompt: {e}")
+        _launch_windows(full_cmd)
     elif platform.system() == 'Darwin':
         _launch_macos(full_cmd)
     elif platform.system() == 'Linux':
         _launch_linux(full_cmd)
     return False
+
+def _launch_windows(cmd: str) -> bool:
+    try:
+        subprocess.Popen(
+            ["cmd", "/k", cmd],
+            shell=True)
+        return True
+    except Exception as e:
+        log.error(f"Windows launch Failed: {e}")
+        return False
 
 def _launch_macos(cmd: str) -> bool:
     try:
