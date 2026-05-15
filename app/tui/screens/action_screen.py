@@ -129,10 +129,10 @@ class ActionModal(ModalScreen):
             indicator_style = "#FFD700" if is_selected else "#565F89"
 
             tool_style = "#FFD700 bold" if is_selected else "#00E0FF"
-            tool_name = f"({key.split('_')[0].upper()})"
+            tool_name = f"({template['tool']})"
 
             action_style = "#FFD700 bold" if is_selected else "#00A3FF"
-            action_name = " ".join(key.split("_")[1:]).title()
+            action_name = template['description']
 
             table.add_row(
                 Text(indicator, style=indicator_style),
@@ -144,7 +144,7 @@ class ActionModal(ModalScreen):
     def _update_preview(self):
         if self.current_index < len(self.action):
             key, template = self.action[self.current_index]
-            full_cmd = template.format(target=self.target)
+            full_cmd = template['command'].format(target=self.target)
             self.cmd_preview = full_cmd
 
             preview_panel = Panel(
