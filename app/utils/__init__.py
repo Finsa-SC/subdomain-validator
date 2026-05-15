@@ -3,3 +3,4 @@ from .logger import get_logger
 from .screenshotter import take_screenshot, can_screenshot, do_screenshot
 from .port_scanner import parse_port, scan_port
 from .favicon import fetch_favicon
+from .launcher import COMMAND_TEMPLATES, launch_terminal
