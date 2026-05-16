@@ -18,8 +18,6 @@ def can_screenshot(result: dict) -> tuple[bool, str]:
 
     h_status = http.get("status")
     s_status = https.get("status")
-    h_size = http.get("size")
-    s_size = https.get("size")
     h_title = (http.get("title") or "").lower().strip()
     s_title = (https.get("title") or "").lower().strip()
 
@@ -31,7 +29,6 @@ def can_screenshot(result: dict) -> tuple[bool, str]:
     for junk in TITLE_IGNORE:
         if junk in title:
             return False, f"Title generic: '{title}'"
-
     return True, ""
 
 def _pick_url(result: dict) -> str:
@@ -120,24 +117,29 @@ def ensure_chromium():
             proxy={'server': proxy_url} if proxy_url else None
         )
         return play, browser
-    except Exception:
-        log.error("Chromium not found! Installing...")
-        subprocess.run(
-            [sys.executable, "-m", "playwright", "install", "chromium"],
-            check=True
-        )
-        log.info("Chromium installed!")
-        play = sync_playwright().start()
-        args = [
-            "--no-sandbox",
-            "--disable-dev-shm-usage",
-            "--disable-blink-features=AutomationControlled"
-        ]
-        browser = play.chromium.launch(
-            args=args,
-            proxy={'server': proxy_url} if proxy_url else None
-        )
-        return play, browser
+    except Exception as e:
+        str_err = str(e)
+
+        if 'Browser closed' in str_err or "Executable doesn't exist" in str_err:
+            log.info("Chromium not found! Installing...")
+            subprocess.run(
+                [sys.executable, "-m", "playwright", "install", "chromium"],
+                check=True
+            )
+            log.info("Chromium installed!")
+            play = sync_playwright().start()
+            args = [
+                "--no-sandbox",
+                "--disable-dev-shm-usage",
+                "--disable-blink-features=AutomationControlled"
+            ]
+            browser = play.chromium.launch(
+                args=args,
+                proxy={'server': proxy_url} if proxy_url else None
+            )
+            return play, browser
+        log.error(f"Failed to open chromium: {e}")
+        return None, None
 
 def do_screenshot(app, result: dict, notify=None, callback=None):
         from utils import take_screenshot, can_screenshot
