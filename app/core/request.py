@@ -21,6 +21,85 @@ if not PROXY_URL or PROXY_URL == 'none':
 debug_mode = os.getenv('DEBUG', '').lower().strip()
 DEBUG = debug_mode == 'true'
 
+def _do_request(
+    url: str,
+    method: str,
+    headers: dict,
+    impersonate: str,
+    allow_redirects: bool,
+    base_timeout: float,
+    retries: int,
+    **kwargs
+) -> requests.Response | None:
+    last_error = None
+    proxies = None
+
+    for retry_count in range(retries + 1):
+        if not app_state.is_running:
+            return None
+        try:
+            timeout = base_timeout + retry_count
+            if PROXY_URL:
+                proxies = {
+                    "http": PROXY_URL,
+                    "https": PROXY_URL
+                }
+
+            return requests.request(
+                method=method.upper(),
+                url=url,
+                timeout=timeout,
+                headers=headers,
+                impersonate=impersonate,
+                allow_redirects=allow_redirects,
+                verify=False,
+                proxies=proxies,
+                **kwargs
+            )
+        except requests.errors.RequestsError as e:
+            last_error = e
+            err = str(e).upper()
+
+            if DEBUG:
+                log.debug(f"RAW ERROR => {err}")
+
+            transient = [
+                "TIMED OUT",
+                "TIMEOUT",
+                "CONNECTION RESET",
+                "FAILED TO CONNECT",
+                "EOF",
+                "NETWORK",
+                "TLSV1 ALERT INTERNAL ERROR",
+                "RECV FAILURE",
+                "EMPTY REPLY",
+            ]
+            if 'SSL' in err or 'CERTIFICATE' in err:
+                raise e
+            if any(x in err for x in transient):
+                if retry_count < retries:
+                    if DEBUG:
+                        log.debug(
+                            f"Retry [{retry_count+1}/{retries}] "
+                            f"timeout={timeout}s -> {url}"
+                        )
+
+                    wait_time = 0.5 * (retry_count + 1)
+                    stop_at = time.time() + wait_time
+                    while time.time() < stop_at:
+                        if not app_state.is_running:
+                            return None
+                        time.sleep(0.1)
+                    continue
+            raise e
+        except Exception as e:
+            if DEBUG:
+                log.debug(
+                    f"UNKNOWN ERROR => {type(e).__name__}: {e}"
+                )
+            raise e
+    raise last_error
+
 def send_request(
         proto: str ,
         sub: str,
@@ -127,79 +206,5 @@ def resolve_ip(sub: str, custom_dns: str, record_type: str) -> str | None:
     except Exception:
         return None
 
-def _do_request(
-    url,
-    headers,
-    impersonate,
-    allow_redirects,
-    base_timeout,
-    retries,
-) -> requests.Response:
-    last_error = None
-
-    for retry_count in range(retries + 1):
-        if not app_state.is_running:
-            return None
-        try:
-            timeout = base_timeout + retry_count
-            proxies = None
-            if PROXY_URL:
-                proxies = {
-                    "http": PROXY_URL,
-                    "https": PROXY_URL
-                }
-
-            return requests.get(
-                url=url,
-                timeout=timeout,
-                headers=headers,
-                impersonate=impersonate,
-                allow_redirects=allow_redirects,
-                verify=False,
-                proxies=proxies
-            )
-        except requests.errors.RequestsError as e:
-            last_error = e
-            err = str(e).upper()
-
-            if DEBUG:
-                log.debug(f"RAW ERROR => {err}")
-
-            transient = [
-                "TIMED OUT",
-                "TIMEOUT",
-                "CONNECTION RESET",
-                "FAILED TO CONNECT",
-                "EOF",
-                "NETWORK",
-                "TLSV1 ALERT INTERNAL ERROR",
-                "RECV FAILURE",
-                "EMPTY REPLY",
-            ]
-            if 'SSL' in err or 'CERTIFICATE' in err:
-                raise e
-            if any(x in err for x in transient):
-                if retry_count < retries:
-                    if DEBUG:
-                        log.debug(
-                            f"Retry [{retry_count+1}/{retries}] "
-                            f"timeout={timeout}s -> {url}"
-                        )
-
-                    wait_time = 0.5 * (retry_count + 1)
-                    stop_at = time.time() + wait_time
-                    while time.time() < stop_at:
-                        if not app_state.is_running:
-                            return None
-                        time.sleep(0.1)
-                    continue
-            raise e
-        except Exception as e:
-            if DEBUG:
-                log.debug(
-                    f"UNKNOWN ERROR => {type(e).__name__}: {e}"
-                )
-            raise e
-    raise last_error
 
 
