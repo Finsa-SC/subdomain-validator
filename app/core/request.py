@@ -129,7 +129,7 @@ def send_request(
 
     except Exception as e:
         str_err = str(e).upper()
-        if "DNSERROR" in str_err or "Could not resolve host":
+        if "DNSERROR" in str_err or "COULD NOT RESOLVE HOST":
             log.debug(f"Send request failed (DNS) for {url}: {type(e).__name__} - {e}")
         log.error(f"Send request failed for {url}: {type(e).__name__} - {e}")
         return None
@@ -178,7 +178,7 @@ def send_subdomain_request(
             return None, "CONN_ERR"
         return None
     except Exception as e:
-        log.error(f"send_request_with_error [{proto}] {sub}: {type(e).__name__} - {e}")
+        log.error(f"send_request_request [{proto}] {sub}: {type(e).__name__} - {e}")
         return (None, "CONN_ERR") if return_error_token else None
 
 
