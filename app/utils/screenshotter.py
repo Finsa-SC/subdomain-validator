@@ -81,8 +81,8 @@ def take_screenshot(result: dict, open_image: bool = False):
         if "DLL load failed" in str_err or "_greenlet" in str_err:
             msg = (
                 "Screenshot failed: DLL not found. "
-                "Install Visual C++ Redistributable from: "
-                "https://aka.ms/vs/17/release/vc_redist.x64.exe"
+                "Install Visual C++ Redistributable needed "
+                "The link to download has been copied to your clipboard"
             )
             log.error(msg)
             return False, msg
