@@ -181,7 +181,10 @@ def send_subdomain_request(
         return (None, "CONN_ERR") if return_error_token else None
 
 
-def get_html_title(res):
+def get_html_title(res: requests.Response):
+    if not res:
+        return '-'
+
     res.encoding = res.charset_encoding or "utf-8"
     try:
         title_search = re.search(r'<title>(.*?)</title>', res.text, re.IGNORECASE | re.DOTALL)
@@ -201,10 +204,5 @@ def resolve_ip(sub: str, custom_dns: str, record_type: str) -> str | None:
 
         answer = resolver.resolve(sub, record_type)
         return str(answer[0])
-    except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer):
+    except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer, Exception):
         return None
-    except Exception:
-        return None
-
-
-
