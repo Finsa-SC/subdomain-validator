@@ -1,5 +1,5 @@
 ##Module Function
-from .request import send_request, send_request_with_error
+from .request import send_subdomain_request
 from models import get_config
 from utils import get_logger, scan_port
 
@@ -98,8 +98,8 @@ def validate_subdomain(sub, wildcard_baseline):
 
         custom_dns = config.dns
 
-        http_res, http_err = send_request_with_error("http", sub, config.timeout, custom_dns)
-        https_res, https_err = send_request_with_error("https", sub, config.timeout, custom_dns)
+        http_res, http_err = send_subdomain_request("http", sub, config.timeout, custom_dns, return_error_token=True)
+        https_res, https_err = send_subdomain_request("https", sub, config.timeout, custom_dns, return_error_token=True)
 
         h = parse_response(http_res, http_err)
         s = parse_response(https_res, https_err)
