@@ -1,4 +1,6 @@
 import subprocess, platform, os, shutil
+import tempfile
+
 from dotenv import load_dotenv
 from .logger import get_logger
 
@@ -105,6 +107,52 @@ def launch_terminal(action_key: str, target: str, custom_cmd: str = None):
     else:
         log.error(f"Unsupported platform: {system}")
         return False
+
+def launch_terminal_multi(action_key: str, targets: list[str], custom_cmd: str = None) -> tuple[int, int]:
+    template = COMMAND_TEMPLATES.get(action_key)
+    system = platform.system()
+    success, fail = 0, 0
+
+    if not custom_cmd:
+        fd, tmp_file = tempfile.mkstemp(suffix='.txt', prefix='subv_targets_')
+        try:
+            with os.fdopen(fd, 'w') as file:
+                file.write("\n".join(targets))
+            bulk_cmd = COMMAND_TEMPLATES[action_key].format(file=tmp_file)
+
+            if system == 'Windows':
+                ok = _launch_windows(bulk_cmd)
+            elif system == 'Darwin':
+                ok = _launch_macos(bulk_cmd)
+            elif system == 'Linux':
+                ok = _launch_linux(bulk_cmd)
+            else:
+                ok = False
+
+            return (1, 0) if ok else (0, 1)
+        except Exception as e:
+            log.error(f"Failed to launch terminal multi action: {e}")
+            return 0, 1
+    for target in targets:
+        if custom_cmd:
+            full_cmd = custom_cmd.replace("{target}", target)
+        else:
+            full_cmd = template['comman_multi'].format(target=target)
+
+        if system == "Windows":
+            ok = _launch_windows(full_cmd)
+        elif system == "Darwin":
+            ok = _launch_macos(full_cmd)
+        else:
+            ok = _launch_linux(full_cmd)
+
+        if ok:
+            success += 1
+        else:
+            fail += 1
+
+    return success, fail
+
 
 def _launch_windows(cmd: str) -> bool:
     try:
