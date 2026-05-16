@@ -1,5 +1,7 @@
 import time, os, re, urllib3, html
 from dotenv import load_dotenv
+from platformdirs import user_config_dir
+
 from .stealth import StealthMode
 from models import DNS_PROVIDERS, get_config
 from utils import get_logger
@@ -101,66 +103,49 @@ def _do_request(
     raise last_error
 
 def send_request(
-        proto: str ,
-        sub: str,
+        url: str,
+        method: str,
         timeout: float,
-        custom_dns: str = None,
-        allow_redirects: bool = False
+        allow_redirects: bool = False,
+        **kwargs
 ) -> requests.Response | None:
 
     config = get_config()
     try:
         stealth_header, browser_engine = stealth.get_payload()
 
-        if custom_dns:
-            dns_ip = DNS_PROVIDERS.get(custom_dns.lower(), custom_dns)
-            ip = resolve_ip(sub, dns_ip, 'A') or resolve_ip(sub, dns_ip, 'AAAA')
-            if ip:
-                formatted_ip = f"[{ip}]" if ":" in ip else ip
-                url = f"{proto}://{formatted_ip}"
-                stealth_header["Host"] = sub
-            else:
-                return None
-        else:
-            url = f"{proto}://{sub}"
+        user_header = kwargs.pop("headers", {})
+        stealth_header.update(user_header)
 
         res = _do_request(
             url=url,
-            base_timeout=timeout,
+            method=method,
             headers=stealth_header,
+            base_timeout=timeout,
             impersonate=browser_engine,
             allow_redirects=allow_redirects,
-            retries=config.retry
+            retries=config.retry,
+            **kwargs
         )
-
         return res
+
     except Exception as e:
-        log.debug(f"send_request failed [{proto}] {sub}: {type(e).__name__} - {e}")
+        log.debug(f"Send request failed for {url}: {type(e).__name__} - {e}")
         return None
 
-def send_request_with_error(
+def send_subdomain_request(
         proto: str,
         sub: str,
         timeout: float,
         custom_dns: str = None,
         allow_redirects: bool = False,
-    ) -> tuple[requests.Response | None, str | None]:
+        return_error_token: bool = False
+    ) -> tuple[requests.Response | None, str | None] | None:
     config = get_config()
 
     try:
         stealth_header, browser_engine = stealth.get_payload()
 
-        if custom_dns:
-            dns_ip = DNS_PROVIDERS.get(custom_dns.lower(), custom_dns)
-            ip = resolve_ip(sub, dns_ip, "A") or resolve_ip(sub, dns_ip, "AAAA")
-            if ip:
-                formatted_ip = f"[{ip}]" if ":" in ip else ip
-                url = f"{proto}://{formatted_ip}"
-                stealth_header["Host"] = sub
-            else:
-                return None, "DNS_ERR"
-        else:
-            url = f"{proto}://{sub}"
         res = _do_request(
             url=url,
             base_timeout=timeout,
