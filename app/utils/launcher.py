@@ -28,31 +28,38 @@ COMMAND_TEMPLATES = {
     "ffuf_dir": {
         "tool": ffuf,
         "description": "Directory fuzzing",
-        "command": "ffuf -u https://{target}/FUZZ -w /usr/share/wordlists/dirb/common.txt"
+        "command": "ffuf -u https://{target}/FUZZ -w /usr/share/wordlists/dirb/common.txt",
+        "command_multi": None
     },
     "ffuf_json": {
         "tool": ffuf,
         "description": "Json payload fuzzing",
-        "command": "ffuf -u https://{target} -X POST -H 'Content-Type: application/json' -d 'FUZZ'"
+        "command": "ffuf -u https://{target} -X POST -H 'Content-Type: application/json' -d 'FUZZ'",
+        "command_multi": None
     },
     "sqlmap": {
         "tool": sqlmap,
         "description": "Sql injection testing",
-        "command": "sqlmap -u https://{target} --batch --banner"
+        "command": "sqlmap -u https://{target} --batch --banner",
+        "command_multi": None
     },
     "whois": {
         "tool": "WHOIS",
         "description": "Domain ownership lookup",
-        "command": "whois {target}"},
+        "command": "whois {target}",
+        "command_multi": None
+    },
     "dig": {
         "tool": "DIG",
         "description": "DNS record inspection",
-        "command": "dig any {target} +short"
+        "command": "dig any {target} +short",
+        "command_multi": None
     },
     "curl_head": {
         "tool": "CURL",
         "description": "HTTP header inspection",
-        "command": "curl -I https://{target}"
+        "command": "curl -I https://{target}",
+        "command_multi": None
     },
     "wafw00w": {
         "tool": "WAFW00F",
@@ -63,7 +70,8 @@ COMMAND_TEMPLATES = {
     "searchploit": {
         "tool": "SEARCHPLOIT",
         "description": "Exploit database local search",
-        "command": "searchploit {target}"
+        "command": "searchploit {target}",
+        "command_multi": None
     },
     "nicto": {
         "tool": "NIKTO",
@@ -86,7 +94,8 @@ COMMAND_TEMPLATES = {
     "theharvester": {
         "tool": "THEHARVESTER",
         "description": "OSINT email, names, subdomains gathering",
-        "command": "theHarvester -d {target} -b all"
+        "command": "theHarvester -d {target} -b all",
+        "command_multi": None
     }
 }
 
@@ -152,7 +161,6 @@ def launch_terminal_multi(action_key: str, targets: list[str], custom_cmd: str =
             fail += 1
 
     return success, fail
-
 
 def _launch_windows(cmd: str) -> bool:
     try:
