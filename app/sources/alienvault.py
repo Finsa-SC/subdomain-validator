@@ -3,14 +3,18 @@
 # ===================================================
 
 from utils import get_logger
-import requests
 
 def fetch_alienvault(domain: str):
+    from core import send_request
     log = get_logger("alienvault")
     subdomains = set()
     url = f"https://otx.alienvault.com/api/v1/indicators/domain/{domain}/passive_dns"
     try:
-        res = requests.get(url, timeout=10)
+        res = send_request(method="GET", url=url, timeout=10)
+        if not res:
+            log.error("Failed to fetch data from Alien Vault (Connection or Proxy Error).")
+            return
+
         if res.status_code != 200:
             return subdomains
         data = res.json()
@@ -20,7 +24,5 @@ def fetch_alienvault(domain: str):
                 sub = hostname.strip().lower()
                 if sub and (sub.endswith(f".{domain}") or sub == domain):
                     yield sub
-    except requests.exceptions.Timeout:
-        log.error("Request Timeout")
-    except requests.exceptions.RequestException as e:
-        log.error(f"{e}")
+    except Exception as e:
+        log.error(f"Unexpected error in Alien Vault module: {e}")
