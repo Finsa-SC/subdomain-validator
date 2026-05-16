@@ -130,35 +130,23 @@ def _scan_headers(headers: dict) -> list[dict]:
     return results
 
 def _fetch_body(result: dict, timeout: float = 8.0) -> str | None:
-    import urllib3
-    from curl_cffi import requests
-    from core import StealthMode
-
-    urllib3.disable_warnings()
+    from core import StealthMode, send_request
 
     subdomain = result.get("subdomain", "")
     https_result = result.get("https", {}).get("status")
     url = f"https://{subdomain}" if https_result in (200, 301, 302, 307, 308) else f"http://{subdomain}"
 
-    stealth = StealthMode()
-    headers, engine = stealth.get_payload()
-
-    try:
-        res = requests.get(
-            url=url,
-            timeout=timeout,
-            headers=headers,
-            impersonate=engine,
-            allow_redirects=True,
-            verify=False,
-        )
-        if res.status_code == 200 and res.content:
-            res.encoding = res.charset_encoding or "utf-8"
-            return res.text
-        return None
-    except Exception as e:
-        log.debug(f"_fetch_body failed {subdomain}: {e}")
-        return None
+    res = send_request(
+        url=url,
+        method="GET",
+        timeout=timeout,
+        allow_redirects=True,
+    )
+    
+    if res.status_code == 200 and res.content:
+        res.encoding = res.charset_encoding or "utf-8"
+        return res.text
+    return None
 
 def _scan_body(body: str) -> list[dict[str, str]]:
     results = []
