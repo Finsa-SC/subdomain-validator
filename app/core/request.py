@@ -130,7 +130,9 @@ def send_request(
     except Exception as e:
         str_err = str(e).upper()
         if "DNSERROR" in str_err or "COULD NOT RESOLVE HOST":
-            log.debug(f"Send request failed (DNS) for {url}: {type(e).__name__} - {e}")
+            if DEBUG:
+                log.debug(f"Send request failed (DNS) for {url}: {type(e).__name__} - {e}")
+            return None
         log.error(f"Send request failed for {url}: {type(e).__name__} - {e}")
         return None
 
