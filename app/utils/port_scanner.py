@@ -1,5 +1,7 @@
 from utils import get_logger
 import socket
+import socks
+import os
 
 log = get_logger("port_scanner")
 
