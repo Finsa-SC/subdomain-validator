@@ -46,7 +46,7 @@ class SubdomainScannerTUI(App):
 
     def action_open_multi_action(self):
         active_screen = self.screen
-        if hasattr(active_screen, "get_all_subdomain")
+        if hasattr(active_screen, "get_all_subdomain"):
             all_targets = self.get_all_subdomain()
             if all_targets:
                 self.app.push_screen(MultiActionModal(all_targets))
