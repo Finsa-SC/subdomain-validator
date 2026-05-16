@@ -70,7 +70,7 @@ COMMAND_TEMPLATES = {
     "searchploit": {
         "tool": "SEARCHPLOIT",
         "description": "Exploit database local search",
-        "command": "searchploit {target}",
+        "command": "searchsploit {target}",
         "command_multi": None
     },
     "nicto": {
@@ -87,7 +87,7 @@ COMMAND_TEMPLATES = {
     },
     "whatweb": {
         "tool": "WHATWEB",
-        "description": "Next-gen web scanner technology identifier",
+        "description": "web scanner technology identifier",
         "command": "whatweb -a 3 https://{target}",
         "command_multi": "whatweb --input-file={file_path} -a 3"
     },
