@@ -174,7 +174,7 @@ def validate_subdomain(sub, wildcard_baseline):
             if ports:
                 data["ports"] = ports
 
-        if config.screenshot:
+        if config.screenshot and (isinstance(http_status, int) or isinstance(https_status, int)):
             from utils import take_screenshot, can_screenshot
             ok, reason = can_screenshot(data)
             if ok:
@@ -182,7 +182,7 @@ def validate_subdomain(sub, wildcard_baseline):
                 if success:
                     data["screenshot"] = path_or_err
 
-        if config.deep_scan:
+        if config.deep_scan and (isinstance(http_status, int) or isinstance(https_status, int)):
             from analysis import run_deep_scan
 
             try:
