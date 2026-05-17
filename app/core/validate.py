@@ -189,15 +189,12 @@ def validate_subdomain(sub, wildcard_baseline):
         log.error(f"Error: {sub} -> {e}")
         return False, "No IP", None
 
-def humane_sleep(base_delay: float):
+def humane_sleep(min_delay: float):
     config = get_config()
 
-    if config.delay > 0:
-        jitter = base_delay * 0.25
-        actual_delay = random.uniform(base_delay - jitter, base_delay + jitter)
-        time.sleep(actual_delay)
-    else:
-        time.sleep(random.uniform(0.1, 0.5))
+    if config.delay > 0.0:
+        jitter = min_delay + random.uniform(0.0, 1.0)
+        time.sleep(jitter)
 
 def sign(http_status, https_status, is_wildcard) -> str:
     if is_wildcard:
