@@ -36,9 +36,8 @@ def _detech_tech(header: dict) -> list[str]:
     for name, pattern in patterns.items():
         match = re.search(pattern, header_str, re.IGNORECASE)
         if match:
-            if match.lastindex:
-                version = match.group(1)
-                detected.append(f"{name}: {version}")
+            if match.group() and match.group(1) is not None:
+                detected.append(f"{name}: {match.group(1)}")
             else:
                 detected.append(name)
 
