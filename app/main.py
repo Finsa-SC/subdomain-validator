@@ -78,6 +78,7 @@ def main():
     profile_group = parser.add_argument_group('PROFILING & ANALYSIS')
     profile_group.add_argument("--honeypot", action="store_true", help="Enable smart fingerprinting")
     profile_group.add_argument("--screenshot", action="store_true", help="Take screenshot to each subdomain with 200 status code")
+    profile_group.add_argument("-X", "--deep-scan", action="store_true", help="Automaticaly run deep scan for each subdomain")
 
     if len(sys.argv) == 1:
         parser.print_help()
@@ -138,7 +139,8 @@ def main():
         dns=args.dns,
         retry=args.retry,
         port=parse_port(args.port),
-        query=filter_query
+        query=filter_query,
+        deep_scan=args.deep_scan
     )
 
     set_config(config)

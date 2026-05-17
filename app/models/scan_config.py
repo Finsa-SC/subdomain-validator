@@ -22,7 +22,7 @@ class ScanConfig:
     # --- Profiling --- #
     honeypot: bool = False
     screenshot: bool = False
-    detect_version: bool = False
+    deep_scan: bool = False
 
     # --- Dns --- #
     dns: str | None = None
