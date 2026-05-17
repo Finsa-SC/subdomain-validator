@@ -130,7 +130,7 @@ def _scan_headers(headers: dict) -> list[dict]:
     return results
 
 def _fetch_body(result: dict, timeout: float = 8.0) -> str | None:
-    from core import StealthMode, send_request
+    from core import send_request
 
     subdomain = result.get("subdomain", "")
     https_result = result.get("https", {}).get("status")
