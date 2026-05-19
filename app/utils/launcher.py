@@ -1,5 +1,6 @@
 import subprocess, platform, os, shutil
 import tempfile
+from pathlib import Path
 
 from dotenv import load_dotenv
 from .logger import get_logger
@@ -61,7 +62,7 @@ COMMAND_TEMPLATES = {
         "command": "curl -I https://{target}",
         "command_multi": None
     },
-    "wafw00w": {
+    "wafw00f": {
         "tool": "WAFW00F",
         "description": "Web Application Firewall fingerprinting",
         "command": "wafw00f https://{target}",
@@ -73,7 +74,7 @@ COMMAND_TEMPLATES = {
         "command": "searchsploit {target}",
         "command_multi": None
     },
-    "nicto": {
+    "nikto": {
         "tool": "NIKTO",
         "description": "Web server vulnerability scanning",
         "command": "nikto -h https://{target}",
@@ -87,7 +88,7 @@ COMMAND_TEMPLATES = {
     },
     "whatweb": {
         "tool": "WHATWEB",
-        "description": "web scanner technology identifier",
+        "description": "Web technology fingerprinting",
         "command": "whatweb -a 3 https://{target}",
         "command_multi": "whatweb --input-file={file_path} -a 3"
     },
@@ -105,64 +106,64 @@ def launch_terminal(action_key: str, target: str, custom_cmd: str = None):
         full_cmd = custom_cmd
     else:
         template = COMMAND_TEMPLATES.get(action_key, "{target}")
+        if not template and not custom_cmd:
+            return False
         full_cmd = template['command'].format(target=target)
 
-    if system == 'Windows':
-        return _launch_windows(full_cmd)
-    elif system == 'Darwin':
-        return _launch_macos(full_cmd)
-    elif system == 'Linux':
-        return _launch_linux(full_cmd)
+    if _launch_by_system(full_cmd, system):
+        return True
     else:
         log.error(f"Unsupported platform: {system}")
         return False
 
 def launch_terminal_multi(action_key: str, targets: list[str], custom_cmd: str = None) -> tuple[int, int]:
+    from utils import schedule_cleanup
+
     template = COMMAND_TEMPLATES.get(action_key)
     system = platform.system()
     success, fail = 0, 0
 
+    if not template and not custom_cmd:
+        return 0, len(targets)
+
     has_bulk_cmd = template and template.get('command_multi')
 
     if not custom_cmd and has_bulk_cmd:
-        fd, tmp_file = tempfile.mkstemp(suffix='.txt', prefix='subv_targets_')
+        fd, tmp_file = tempfile.mkstemp(
+            prefix='subv_targets_',
+            suffix='.txt'
+        )
+        os.close(fd)
+
+        file_path = Path(tmp_file)
         try:
-            with os.fdopen(fd, 'w') as file:
-                file.write("\n".join(targets))
-            bulk_cmd = template['command_multi'].format(file_path=tmp_file)
+            file_path.write_text("\n".join(targets))
+            bulk_cmd = template['command_multi'].format(file_path=file_path)
 
-            if system == 'Windows':
-                ok = _launch_windows(bulk_cmd)
-            elif system == 'Darwin':
-                ok = _launch_macos(bulk_cmd)
-            elif system == 'Linux':
-                ok = _launch_linux(bulk_cmd)
+            ok = _launch_by_system(bulk_cmd, system)
+
+            if ok:
+                schedule_cleanup(file_path, delay=300)
+                return 1, 0
             else:
-                ok = False
+                schedule_cleanup(file_path)
+                return 0, 1
 
-            return (1, 0) if ok else (0, 1)
         except Exception as e:
             log.error(f"Failed to launch terminal multi action: {e}")
+            schedule_cleanup(file_path)
             return 0, 1
+
     for target in targets:
         if custom_cmd:
             full_cmd = custom_cmd.replace("{target}", target)
         else:
             full_cmd = template["command"].format(target=target)
 
-        if system == "Windows":
-            ok = _launch_windows(full_cmd)
-        elif system == "Darwin":
-            ok = _launch_macos(full_cmd)
-        elif system == 'Linux':
-            ok = _launch_linux(full_cmd)
-        else:
-            ok = False
+        ok = _launch_by_system(full_cmd, system)
 
-        if ok:
-            success += 1
-        else:
-            fail += 1
+        success += ok
+        fail += (not ok)
 
     return success, fail
 
@@ -217,4 +218,13 @@ def _launch_linux(cmd: str) -> bool:
         except Exception as e:
             log.error(f"Failed with {term[0]}: {e}")
             continue
+    return False
+
+def _launch_by_system(cmd: str, system: str) -> bool:
+    if system == 'Windows':
+        return _launch_windows(cmd)
+    elif system == 'Darwin':
+        return _launch_macos(cmd)
+    elif system == 'Linux':
+        return _launch_linux(cmd)
     return False

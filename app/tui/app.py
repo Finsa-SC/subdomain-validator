@@ -3,7 +3,7 @@ from textual.app import App
 from textual.binding import Binding
 
 from .screens.action_modal import ActionModal
-from .screens.multi_action_multi import MultiActionModal
+from .screens.multi_action_model import MultiActionModal
 from .screens.main_screen import MainScreen
 from core import app_state
 
