@@ -107,6 +107,7 @@ def check_subdomain_tui(domain: str, callback):
         pass
     finally:
         log.info(f"Scanning started at: {datetime.now()}")
+
 def check_wildcard(domain: str):
     config = get_config()
     wild_sub = f"{os.urandom(2).hex()}.{domain}"
@@ -116,10 +117,9 @@ def check_wildcard(domain: str):
         http_future = ex.submit(send_subdomain_request, "http", wild_sub, config.timeout, None, False, True)
         https_future = ex.submit(send_subdomain_request, "https", wild_sub, config.timeout, None, False, True)
 
-        res_http = http_future.result()
-        res_https = https_future.result()
+        res_http, err_http = http_future.result()
+        res_https, err_https = https_future.result()
 
-    log
     from .validate import parse_response
     h = parse_response(res_http, None)
     s = parse_response(res_https, None)
