@@ -88,9 +88,11 @@ def check_subdomain_tui(domain: str, callback):
                             dict_sub["honeypot_findings"] = findings
 
                             subdomain = dict_sub.get("subdomain", "")
-                            save_result_to_cache(domain_root, subdomain, dict_sub)
 
                         callback(dict_sub)
+                        if dict_sub:
+                            save_result_to_cache(domain_root, subdomain, dict_sub)
+
                     except Exception:
                         pass
 
