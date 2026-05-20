@@ -154,7 +154,7 @@ def launch_terminal_multi(action_key: str, targets: list[str], custom_cmd: str =
         except Exception as e:
             log.error(f"Failed to launch terminal multi action: {e}")
             schedule_cleanup(str(file_path), delay=1)
-            return 0, 1
+            return False
 
     if custom_cmd:
         try:

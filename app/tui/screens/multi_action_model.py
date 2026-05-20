@@ -221,8 +221,7 @@ class MultiActionModal(ModalScreen):
 
     def _run_with_cmd(self, cmd: str) -> bool:
         key = self.action[self.current_index][0] if self.current_index < len(self.action) else 'custom'
-        success, fail = launch_terminal_multi(key, self.target, cmd)
-        return success > 0
+        return launch_terminal_multi(key, self.target, cmd)
 
     def action_dismiss(self):
         self.app.pop_screen()
