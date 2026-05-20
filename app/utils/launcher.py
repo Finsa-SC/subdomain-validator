@@ -116,15 +116,15 @@ def launch_terminal(action_key: str, target: str, custom_cmd: str = None):
         log.error(f"Unsupported platform: {system}")
         return False
 
-def launch_terminal_multi(action_key: str, targets: list[str], custom_cmd: str = None) -> tuple[int, int]:
+def launch_terminal_multi(action_key: str, targets: list[str], custom_cmd: str = None) -> bool:
     from utils import schedule_cleanup
 
     template = COMMAND_TEMPLATES.get(action_key)
     system = platform.system()
-    success, fail = 0, 0
 
     if not template and not custom_cmd:
-        return 0, len(targets)
+        log.error(f"No template found for action: {action_key}")
+        return False
 
     has_bulk_cmd = template and template.get('command_multi')
 
@@ -146,28 +146,28 @@ def launch_terminal_multi(action_key: str, targets: list[str], custom_cmd: str =
 
             if ok:
                 schedule_cleanup(str(file_path), delay=300)
-                return 1, 0
+                return True
             else:
                 schedule_cleanup(str(file_path), delay=1)
-                return 0, 1
+                return False
 
         except Exception as e:
             log.error(f"Failed to launch terminal multi action: {e}")
             schedule_cleanup(str(file_path), delay=1)
             return 0, 1
 
-    for target in targets:
-        if custom_cmd:
-            full_cmd = custom_cmd.replace("{target}", target)
-        else:
-            full_cmd = template["command"].format(target=target)
+    if custom_cmd:
+        try:
+            full_cmd = custom_cmd
+            ok = _launch_by_system(full_cmd, system)
+            return ok
 
-        ok = _launch_by_system(full_cmd, system)
+        except Exception as e:
+            log.error(f"Failed to launch bulk command: {e}")
+            return False
 
-        success += ok
-        fail += (not ok)
-
-    return success, fail
+    log.error(f"Action '{action_key}' tidak support bulk mode")
+    return False
 
 def _launch_windows(cmd: str) -> bool:
     full_command = f'start "Subv Execution" cmd /k "{cmd}"'
