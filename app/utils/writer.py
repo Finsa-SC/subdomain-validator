@@ -158,3 +158,18 @@ def schedule_cleanup(file_path: str, delay: float | int = 300.0):
 
     thread = threading.Thread(target=cleanup, daemon=True)
     thread.start()
+
+def get_cache_file(subdomain: str) -> Path:
+    cache_file = Path("result") / ".cache"
+    cache_file.mkdir(parents=True, exist_ok=True)
+    return cache_file / f"{subdomain}_result.json"
+
+def load_result_from_cache(domain: str) -> dict:
+    cache_file = get_cache_file(domain)
+    if cache_file.exists():
+        try:
+            with open(cache_file, 'r') as file:
+                return json.load(file)
+        except Exception as e:
+            log.error(f"Failed to read cache file: {e}")
+    return {}
