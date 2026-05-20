@@ -7,7 +7,7 @@ from rich.text import Text
 from rich.console import Group
 from rich.align import Align
 from urllib.parse import urlparse
-from .subdomain_table import _normalize_status
+from .subdomain_table import normalize_status
 
 class DetailPanel(Static):
     def show_detail(self, result):
@@ -47,8 +47,8 @@ class DetailPanel(Static):
             server = proto.get("server", "Unknown")
             title = proto.get("title", '-')
 
-            status = _normalize_status(status)
-            redir = _format_redirect(redir, subdomain)
+            status = normalize_status(status)
+            redir = format_redirect(redir, subdomain)
 
             detail_table.add_row("", "")
             detail_table.add_row("[bold]HTTP", "")
@@ -111,7 +111,7 @@ class DetailPanel(Static):
 
         self.update(panel)
 
-def _format_redirect(url: str, current_subdomain: str = "") -> str:
+def format_redirect(url: str, current_subdomain: str = "") -> str:
     if not url or url in ["-", None, "None", ""]:
         return "-"
     parsed = urlparse(url)

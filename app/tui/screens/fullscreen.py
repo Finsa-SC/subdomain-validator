@@ -13,7 +13,7 @@ from rich.rule import Rule
 from tldextract import tldextract
 
 from utils import do_screenshot, parse_port, scan_port, get_logger, load_result_from_cache
-from ..widgets import _format_redirect
+from ..widgets import format_redirect
 
 log = get_logger("fullscreen")
 
@@ -47,6 +47,7 @@ class FullscreenDetail(Screen):
         r = self.result
         http = r.get("http", {})
         https = r.get("https", {})
+        deep_data = r.get('deep_scan', {})
 
         sections = []
 
@@ -77,43 +78,6 @@ class FullscreenDetail(Screen):
         sections.append(Rule(title="[bold #00A3FF]HONEYPOT ANALYSIS[/]", style="#1A1B26", align='left'))
         sections.append(self._honeypot_analysis(r))
 
-        # Deep Scan Results
-        deep_data = r.get("deep_scan")
-        if deep_data:
-                sections.append(Rule(title="[bold #00A3FF]Deep Scan[/]", style="#1A1B26"))
-                deep_table = _make_table()
-
-                for key, info in deep_data.items():
-                    status = info["status"].value  # "pending", "running", etc.
-                    label = info["label"]
-
-                    # Styling depends on status
-                    if status == "running":
-                        status_str = f"[#BB9AF7]↻ {status}...[/]"
-                    elif status == "done":
-                        status_str = f"[#73DACA]✓ {status}[/]"
-                    elif status == "error":
-                        status_str = f"[#F7768E]✗ {status}[/]"
-                    else:
-                        status_str = f"[#565F89]{status}[/]"
-
-                    deep_table.add_row(label, status_str)
-
-                    if status == "done" and info["data"]:
-                        d = info["data"]
-                        if key == "favicon":
-                            if d.get("hash_mmh3"):
-                                deep_table.add_row("", f"  [#00A3FF]MMH3:[/] {d['hash_mmh3']}")
-                            if d.get('matched'):
-                                deep_table.add_row("", f"  [#73DACA]Tech:[/] [bold]{d['matched']}[/]")
-                            if d.get("shodan_query"):
-                                deep_table.add_row("", f"  [#565F89]Scan:[/] {d['shodan_query']}")
-                        elif key == "tech_version" and d.get("summary"):
-                            for t, v in d["summary"].items():
-                                deep_table.add_row("", f"  [#00A3FF]{t}:[/] {v}")
-
-                sections.append(deep_table)
-
         # Cookies
         sections.append(_section_rule("Cookies"))
         cookies = _parse_cookies(http, https)
@@ -124,6 +88,38 @@ class FullscreenDetail(Screen):
             sections.append(cookies_table)
         else:
             sections.append(Text("  No cookies detected", style="#565F89"))
+
+        def formatting_status(status: str) -> str:
+            if status == "running":
+                return f"[#BB9AF7]↻ {status}...[/]"
+            elif status == "done":
+                return f"[#73DACA]✓ {status}[/]"
+            elif status == "error":
+                return f"[#F7768E]✗ {status}[/]"
+            else:
+                return f"[#565F89]{status}[/]"
+
+        # Deep Scan Results
+        if 'favicon' in deep_data:
+            sections.append(Rule(title="[bold #00A3FF]FAVICON IDENTIFICATION[/]", style="#1A1B26", align='left'))
+            fav_info = deep_data.get("favicon")
+            status = fav_info['status'].value
+
+            status_str = formatting_status(status)
+
+            fav_table = _make_table()
+            fav_table.add_row("Favicon Scan", status_str)
+
+            deep_table = _make_table()
+            if status == "done" and fav_info["data"]:
+                d = fav_info["data"]
+                if d.get("hash_mmh3"):
+                    deep_table.add_row("", f"  [#00A3FF]MMH3:[/] {d['hash_mmh3']}")
+                if d.get('matched'):
+                    deep_table.add_row("", f"  [#73DACA]Tech:[/] [bold]{d['matched']}[/]")
+                if d.get("shodan_query"):
+                    deep_table.add_row("", f"  [#565F89]Scan:[/] {d['shodan_query']}")
+            sections.append(fav_table)
 
         # Headers http
         sections.append(Rule(title="[bold #00A3FF]HTTP Headers[/]", style="#1A1B26", align='left'))
@@ -188,7 +184,7 @@ class FullscreenDetail(Screen):
     def _protocol_comparison(data:dict) -> Table:
         http = data.get('http', {})
         https = data.get('https', {})
-        redir = _format_redirect(http.get('redir'), data.get('subdomain'))
+        redir = format_redirect(http.get('redir'), data.get('subdomain'))
         is_upgrade = 'upgrade' in redir.lower()
 
         def _create_proto_table(target_data, is_http: bool = False):
