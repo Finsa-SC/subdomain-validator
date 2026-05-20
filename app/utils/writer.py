@@ -159,10 +159,10 @@ def schedule_cleanup(file_path: str, delay: float | int = 300.0):
     thread = threading.Thread(target=cleanup, daemon=True)
     thread.start()
 
-def get_cache_file(subdomain: str) -> Path:
+def get_cache_file(domain: str) -> Path:
     cache_file = Path("result") / ".cache"
     cache_file.mkdir(parents=True, exist_ok=True)
-    return cache_file / f"{subdomain}_result.json"
+    return cache_file / f"{domain}_result.json"
 
 def load_result_from_cache(domain: str) -> dict:
     cache_file = get_cache_file(domain)
@@ -183,3 +183,14 @@ def save_result_to_cache(domain: str, results: dict):
             json.dump(result, file, indent=2, default=lambda o: dict(o) if hasattr(o, "items") else str(o))
     except Exception as e:
         log.error(f"Failed to save result to cache: {e}")
+
+def update_result_in_cache(domain: str, subdomain: str, update: dict):
+    cache_file = get_cache_file(domain)
+    try:
+        results = load_result_from_cache(domain)
+        if subdomain in results:
+            results[subdomain].update(update)
+            with open(cache_file, 'w') as file:
+                json.dump(results, file, indent=2, default=lambda o: dict(o) if hasattr(o, 'items') else str(o))
+    except Exception as e:
+        log.error(f"Failed to update cache: {e}")
