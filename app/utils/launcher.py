@@ -138,20 +138,22 @@ def launch_terminal_multi(action_key: str, targets: list[str], custom_cmd: str =
         file_path = Path(tmp_file)
         try:
             file_path.write_text("\n".join(targets))
-            bulk_cmd = template['command_multi'].format(file_path=file_path)
+            bulk_cmd = template['command_multi'].format(
+                file_path=str(file_path)
+            )
 
             ok = _launch_by_system(bulk_cmd, system)
 
             if ok:
-                schedule_cleanup(file_path, delay=300)
+                schedule_cleanup(str(file_path), delay=300)
                 return 1, 0
             else:
-                schedule_cleanup(file_path)
+                schedule_cleanup(str(file_path), delay=1)
                 return 0, 1
 
         except Exception as e:
             log.error(f"Failed to launch terminal multi action: {e}")
-            schedule_cleanup(file_path)
+            schedule_cleanup(str(file_path), delay=1)
             return 0, 1
 
     for target in targets:
