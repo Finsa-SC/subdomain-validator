@@ -135,7 +135,7 @@ SUSPICIOUS_TLS_SIGNATURES = {
     # Honeypot framework identifiers
     "python": ["python-requests", "python/", "aiohttp"],
     "simple": ["simplehttpserver", "basehttpserver", "wsgiref"],
-    # Bare/minimal stacks (honeypots often use these)
+    # Bare/minimal stacks
     "minimal": ["tinyhttp", "microhttp"],
 }
 
@@ -152,6 +152,20 @@ def get_confidence_level(score: float) -> str:
         if score >= treshold:
             return label
     return "Unlikely"
+
+def _calculate_entropy(data: str) -> float:
+    if not data:
+        return 0.0
+
+    from collections import Counter
+    entropy = 0.0
+    len_data = len(data)
+
+    for count in Counter(data).values():
+        prob = count / len_data
+        entropy -= prob * math.log2(prob)
+
+    return min(entropy / 4.7, 1.0)
 
 class HoneypotAnalyzer:
     def __init__(self, data, config):
@@ -261,7 +275,6 @@ class HoneypotAnalyzer:
                     "clickbait_title",
                     f"Default server page title detected: '{title}'")
                 break
-
 
     def check_subdomain(self):
         if not self._is_host_responsive():
