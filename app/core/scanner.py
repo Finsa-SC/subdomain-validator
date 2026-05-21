@@ -77,12 +77,12 @@ def check_subdomain_tui(domain: str, callback):
     else:
         return
 
-    first_sub = next(subdomain_iter, None)
-    if not first_sub:
-        return
-
     wildcard_baseline = check_wildcard(domain_root)
-    subdomain_iter = itertools.chain([first_sub], subdomain_iter)
+
+    initial_batch = list(itertools.islice(subdomain_iter, config.thread * 4))
+    if not initial_batch:
+        log.warning(f"No subdomains returned for {domain}")
+        return
 
     console = Console()
     console.print()
