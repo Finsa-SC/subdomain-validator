@@ -369,6 +369,18 @@ class HoneypotAnalyzer:
                 "missing_title",
                 "HTTPS 200 but no page title — possible bare honeypot response")
 
+        h_latency = self.http.get("latency")
+        s_latency = self.https.get("latency")
+        for latency in (h_latency, s_latency):
+            if latency < 30 and h_200:
+                self._add_signal(
+                    "response_timing",
+                    f"Unnaturally fast response time: {latency}ms (likely honeypot)")
+            elif latency > 15000:
+                self._add_signal(
+                    "response_timing",
+                    f"Suspiciously slow response time: {latency}ms (artificial delay)")
+
     def run_all(self):
         self.check_server()
         self.check_response()
