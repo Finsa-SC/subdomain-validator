@@ -131,6 +131,13 @@ FAKE_COOKIE_PATTERNS = [
     "jsessionid=0",
 ]
 
+SUSPICIOUS_TLS_SIGNATURES = {
+    # Honeypot framework identifiers
+    "python": ["python-requests", "python/", "aiohttp"],
+    "simple": ["simplehttpserver", "basehttpserver", "wsgiref"],
+    # Bare/minimal stacks (honeypots often use these)
+    "minimal": ["tinyhttp", "microhttp"],
+}
 
 EMPTY_HASH = "d41d8cd98f00b204e9800998ecf8427e"
 
