@@ -1,5 +1,6 @@
 import hashlib, ipaddress, time, subprocess, platform, shutil, json, threading
 from pathlib import Path
+from datetime import datetime, timedelta
 
 from models import PROXY_IPS
 from .logger import get_logger
@@ -194,3 +195,13 @@ def update_result_in_cache(domain: str, subdomain: str, update: dict):
                 json.dump(results, file, indent=2, default=lambda o: dict(o) if hasattr(o, 'items') else str(o))
     except Exception as e:
         log.error(f"Failed to update cache: {e}")
+
+def get_cache_age_hour(domain: str) -> float | None:
+    cache_file = get_cache_file(domain)
+    if not cache_file:
+        return
+
+    file_mtime = cache_file.stat().st_mtime
+    age_second = time.time() - file_mtime
+    age_hour = age_second / 3600
+    return age_hour
