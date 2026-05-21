@@ -179,6 +179,32 @@ def _check_tls_ja3_suspicious(server_str: str) -> bool:
                 return True
     return False
 
+def _check_fake_cookies(headers: dict) -> bool:
+    if not headers:
+        return False
+
+    set_cookie = headers.get("set-cookie", "") or headers.get("Set-Cookie", "")
+    if not set_cookie:
+        return False
+
+    set_cookie = set_cookie.lower()
+
+    for fake_pattern in FAKE_COOKIE_PATTERNS:
+        if fake_pattern.lower() in set_cookie
+            return True
+
+    try:
+        for cookie_part in set_cookie.split(";")
+            if '=' in cookie_part:
+                name, value = cookie_part.split('=', 1)
+                entropy = _calculate_entropy(value.strip())
+                if entropy < 0.2 and len(value.strip()) > 5:
+                    return True
+    except:
+        pass
+
+    return False
+
 class HoneypotAnalyzer:
     def __init__(self, data, config):
         self.data = data
