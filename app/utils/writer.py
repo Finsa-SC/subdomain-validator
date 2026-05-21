@@ -1,6 +1,5 @@
 import hashlib, ipaddress, time, subprocess, platform, shutil, json, threading, os
 from pathlib import Path
-from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
 from models import PROXY_IPS

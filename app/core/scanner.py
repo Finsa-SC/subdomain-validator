@@ -8,19 +8,54 @@ from rich.console import Console
 from models import get_config
 from sources import get_subdomain
 from concurrent.futures import ThreadPoolExecutor, FIRST_COMPLETED, wait
+
+from utils.writer import is_cached_valid, get_scanned_from_cache, clear_cache
 from .validate import validate_subdomain
 from .request import send_subdomain_request
 from .state import app_state
-from utils import get_logger, save_result_to_cache
+from utils import get_logger, save_result_to_cache, load_result_from_cache
 from datetime import datetime
 
 log = get_logger("Scanner")
+DEBUG = os.getenv("DEBUG", 'false') == 'true'
+
+def scanner_session(domain):
+    try:
+        log.info(f"Scanning started at: {datetime.now()} for {domain}")
+        yield
+    except KeyboardInterrupt:
+        log.warning(f"Scan interupted by user for {domain}")
+        app_state.stop()
+    except Exception as e:
+        log.error(f"Scanner error: {e}")
+        app_state.stop()
+    finally:log.info(f"Scanner session ended at: {datetime.now()} for {domain}")
 
 def check_subdomain_tui(domain: str, callback):
     config = get_config()
-    log.info(f"Scanning started at: {datetime.now()}")
 
     domain_root = get_domain_root(domain) if '.' in domain else domain
+    use_cache = is_cached_valid(domain=domain_root, fresh=config.fresh)
+    scanned_subs = set()
+
+    if use_cache:
+        if DEBUG:
+            cached_data = get_scanned_from_cache(domain_root)
+            log.debug(f"Loading {len(cached_data)} results from cache")
+
+        all_cached = load_result_from_cache(domain_root)
+
+        for subdomain, result in all_cached.items():
+            callback(result)
+        return
+
+    if config.fresh:
+        clear_cache(domain_root)
+        scanned_subs = set()
+    else:
+        scanned_subs = get_scanned_from_cache(domain_root)
+        if scanned_subs and DEBUG:
+            log.info(f"Resume: Found {len(scanned_subs)} previously scanned subdomains")
 
     if os.path.isfile(domain):
         def _file_gen():
@@ -34,8 +69,7 @@ def check_subdomain_tui(domain: str, callback):
         subdomain_iter = iter(get_subdomain(
             domain,
             config.all_resource,
-            config.source,
-            config.fresh
+            config.source
         ))
     else:
         return
@@ -48,76 +82,72 @@ def check_subdomain_tui(domain: str, callback):
     wildcard_baseline = check_wildcard(domain_root)
     subdomain_iter = itertools.chain([first_sub], subdomain_iter)
 
-    counting = CountTime()
-    counting.start()
-
     console = Console()
     console.print()
 
-    try:
-        with ThreadPoolExecutor(max_workers=config.thread) as ex:
-            app_state.executor = ex
-            futures = {
-                ex.submit(validate_subdomain, sub, wildcard_baseline): sub
-                for sub in itertools.islice(subdomain_iter, config.thread * 4)
-            }
+    with ThreadPoolExecutor(max_workers=config.thread) as ex:
+        app_state.executor = ex
+        futures = {
+            ex.submit(validate_subdomain, sub, wildcard_baseline): sub
+            for sub in itertools.islice(subdomain_iter, config.thread * 4)
+        }
 
-            while futures:
+        while futures:
+            if not app_state.is_running:
+                break
+
+            done, _ = wait(futures.keys(), return_when=FIRST_COMPLETED)
+
+            from analysis import HoneypotAnalyzer
+            for future in done:
                 if not app_state.is_running:
                     break
+                try:
+                    is_ok, ip, dict_sub = future.result()
 
-                done, _ = wait(futures.keys(), return_when=FIRST_COMPLETED)
+                    if dict_sub:
+                        subdomain = dict_sub.get("subdomain", "")
 
-                from analysis import HoneypotAnalyzer
-                for future in done:
-                    if not app_state.is_running:
-                        break
-                    try:
-                        is_ok, ip, dict_sub = future.result()
+                        if subdomain in scanned_subs:
+                            log.debug(f"Skipping already scanned: {subdomain}")
+                            continue
+                        dict_sub['is_live'] = is_ok
 
-                        if dict_sub:
-                            dict_sub["is_live"] = is_ok
+                        dict_sub["server"] = (
+                            dict_sub.get("https", {}).get("server") or
+                            dict_sub.get("http", {}).get("server") or
+                            "Unknown"
+                        )
 
-                            dict_sub["server"] = (
-                                dict_sub.get("https", {}).get("server") or
-                                dict_sub.get("http", {}).get("server") or
-                                "Unknown"
-                            )
+                        analyzer = HoneypotAnalyzer(dict_sub, config)
+                        score, label, findings = analyzer.run_all()
+                        dict_sub["is_honeypot"] = score > 0.5
+                        dict_sub["honeypot_score"] = score
+                        dict_sub["honeypot_label"] = label
+                        dict_sub["honeypot_findings"] = findings
 
+                        subdomain = dict_sub.get("subdomain", "")
 
-                            analyzer = HoneypotAnalyzer(dict_sub, config)
-                            score, label, findings = analyzer.run_all()
-                            dict_sub["is_honeypot"] = score > 0.5
-                            dict_sub["honeypot_score"] = score
-                            dict_sub["honeypot_label"] = label
-                            dict_sub["honeypot_findings"] = findings
+                    callback(dict_sub)
+                    if dict_sub:
+                        save_result_to_cache(domain_root, subdomain, dict_sub)
+                        scanned_subs.add(subdomain)
 
-                            subdomain = dict_sub.get("subdomain", "")
+                except Exception:
+                    pass
 
-                        callback(dict_sub)
-                        if dict_sub:
-                            save_result_to_cache(domain_root, subdomain, dict_sub)
+                del futures[future]
 
-                    except Exception:
-                        pass
+                next_sub = next(subdomain_iter, None)
+                if next_sub and app_state.is_running:
+                    new_f = ex.submit(validate_subdomain, next_sub, wildcard_baseline)
+                    futures[new_f] = next_sub
 
-                    del futures[future]
+                if config.delay:
+                    time.sleep(config.delay)
 
-                    next_sub = next(subdomain_iter, None)
-                    if next_sub and app_state.is_running:
-                        new_f = ex.submit(validate_subdomain, next_sub, wildcard_baseline)
-                        futures[new_f] = next_sub
+    console.print()
 
-                    if config.delay:
-                        time.sleep(config.delay)
-
-        counting.end()
-        console.print()
-
-    except KeyboardInterrupt:
-        pass
-    finally:
-        log.info(f"Scanning ended at: {datetime.now()}")
 
 def check_wildcard(domain: str):
     config = get_config()
