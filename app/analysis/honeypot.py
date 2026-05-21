@@ -160,14 +160,18 @@ def _calculate_entropy(data: str) -> float:
     from collections import Counter
     entropy = 0.0
     len_data = len(data)
+    unique_chars = len(Counter(data))
 
     for count in Counter(data).values():
         prob = count / len_data
         entropy -= prob * math.log2(prob)
 
-    return min(entropy / 4.7, 1.0)
+    max_entropy = math.log2(unique_chars) if unique_chars > 1 else 1.0
+    normalized = entropy / max_entropy if max_entropy > 0 else 0.0
 
-def _check_tls_ja3_suspicious(server_str: str) -> bool:
+    return min(normalized, 1.0)
+
+def _chek_http_framwork_leak(server_str: str) -> bool:
     if not server_str:
         return False
 
@@ -230,7 +234,7 @@ class HoneypotAnalyzer:
     def _is_host_responsive(self):
         h_status = self.http.get("status")
         s_status = self.https.get("status")
-        return h_status in [200, 403] or s_status in [200, 403]
+        return h_status is not None or s_status is not None
 
     def _compute_score(self) -> float:
         if not self.signal:
@@ -273,7 +277,7 @@ class HoneypotAnalyzer:
                     f"Deliberately exposed obsolete version: '{h_server or s_server}'")
                 break
 
-        if _check_tls_ja3_suspicious(h_server) or _check_tls_ja3_suspicious(s_server):
+        if _chek_http_framwork_leak(h_server) or _chek_http_framwork_leak(s_server):
             self._add_signal(
                 "tls_ja3_suspicious",
                 f"Suspicious TLS/Server signature: likely honeypot framework")
