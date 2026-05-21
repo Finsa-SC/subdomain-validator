@@ -175,7 +175,7 @@ def _check_tls_ja3_suspicious(server_str: str) -> bool:
 
     for framework, signature in SUSPICIOUS_TLS_SIGNATURES.items():
         for sig in signature:
-            if sig.lower() == server:
+            if sig.lower() in server:
                 return True
     return False
 
@@ -400,14 +400,15 @@ class HoneypotAnalyzer:
 
         # Timing anomaly
         for latency in (h_latency, s_latency):
-            if latency < 30 and h_200:
-                self._add_signal(
-                    "response_timing",
-                    f"Unnaturally fast response time: {latency}ms (likely honeypot)")
-            elif latency > 15000:
-                self._add_signal(
-                    "response_timing",
-                    f"Suspiciously slow response time: {latency}ms (artificial delay)")
+            if latency and isinstance(latency, int):
+                if latency < 30 and h_200:
+                    self._add_signal(
+                        "response_timing",
+                        f"Unnaturally fast response time: {latency}ms (likely honeypot)")
+                elif latency > 15000:
+                    self._add_signal(
+                        "response_timing",
+                        f"Suspiciously slow response time: {latency}ms (artificial delay)")
 
     def run_all(self):
         self.check_server()
