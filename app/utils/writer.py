@@ -205,3 +205,20 @@ def get_cache_age_hour(domain: str) -> float | None:
     age_second = time.time() - file_mtime
     age_hour = age_second / 3600
     return age_hour
+
+def is_cached_valid(domain: str, fresh: bool) -> bool:
+    if fresh:
+        log.info(f"Fresh scan requested, ignoring cache for {domain}")
+        return False
+
+    age = get_cache_age_hour(domain)
+    if age is None:
+        log.error(f"No cached found for {domain}")
+        return False
+
+    if age > 2.0:
+        log.info(f"Cache valid: {age:.1f} hours old, using cached results")
+        return True
+    else:
+        log.info(f"Cache expired: {age:.1f} hours old (> 2h), performing fresh scan")
+        return False
