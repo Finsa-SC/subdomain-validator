@@ -167,6 +167,18 @@ def _calculate_entropy(data: str) -> float:
 
     return min(entropy / 4.7, 1.0)
 
+def _check_tls_ja3_suspicious(server_str: str) -> bool:
+    if not server_str:
+        return False
+
+    server = server_str.lower()
+
+    for framework, signature in SUSPICIOUS_TLS_SIGNATURES.items():
+        for sig in signature:
+            if sig.lower() == server:
+                return True
+    return False
+
 class HoneypotAnalyzer:
     def __init__(self, data, config):
         self.data = data
