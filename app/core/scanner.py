@@ -37,7 +37,7 @@ def scanner_session(domain):
 
 def check_subdomain_tui(domain: str, callback):
     config = get_config()
-    log.debug("Scanning is start at debug mode") #debug
+    log.debug()
 
     domain_root = get_domain_root(domain) if '.' in domain else domain
     scanned_subs = set()
@@ -54,8 +54,7 @@ def check_subdomain_tui(domain: str, callback):
                 with open(file_path, 'r') as f:
                     first_line = f.readline().strip()
                 domain_root = get_domain_root(first_line) if '.' in first_line else first_line
-            except Exception as e:
-                log.debug(f"file path exception: {e}")
+            except:
                 domain_root = "file_scan_target"
 
             def _file_gen():
@@ -103,11 +102,10 @@ def check_subdomain_tui(domain: str, callback):
         if scanned_subs and DEBUG:
             log.info(f"Resume: Found {len(scanned_subs)} previously scanned subdomains")
 
+    wildcard_baseline = check_wildcard(domain_root)
 
     console = Console()
     console.print()
-
-    log.debug(f"Scanned sub is : {scanned_subs}") #debug
 
     with scanner_session(domain_root):
         try:
@@ -115,8 +113,6 @@ def check_subdomain_tui(domain: str, callback):
                 app_state.executor = ex
                 futures = {}
 
-                wildcard_baseline = check_wildcard(domain_root)
-                
                 slots_to_fill = config.thread * 4
                 while slots_to_fill > 0:
                     sub = next(subdomain_iter, None)
@@ -130,13 +126,13 @@ def check_subdomain_tui(domain: str, callback):
                     futures[f] = sub
                     slots_to_fill -= 1
 
+                from analysis import HoneypotAnalyzer
                 while futures:
                     if not app_state.is_running:
                         break
 
                     done, _ = wait(futures.keys(), return_when=FIRST_COMPLETED)
 
-                    from analysis import HoneypotAnalyzer
                     for future in done:
                         if not app_state.is_running:
                             break
