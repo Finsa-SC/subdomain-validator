@@ -34,14 +34,21 @@ class FilterParser:
                 h_status = self.http.get("status")
                 s_status = self.https.get("status")
 
+                available = (200, 301, 302, 308, 307)
                 forbidden = (401, 402, 403)
                 redirect = (301, 302, 307, 308)
 
                 matched = False
                 for target in targets:
                     target = target.strip()
-                    if target == 'forbidden':
+                    if target == 'live':
+                        if h_status == 200 or s_status == 200:
+                            matched = True
+                    elif target == 'forbidden':
                         if h_status in forbidden or s_status in forbidden:
+                            matched = True
+                    elif target == 'available':
+                        if isinstance(h_status, int) or isinstance(s_status, int):
                             matched = True
                     elif target == 'redirect':
                         if h_status in redirect or s_status in redirect:

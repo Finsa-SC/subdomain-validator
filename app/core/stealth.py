@@ -3,8 +3,10 @@ from models import USER_AGENT_FALLBACK
 import random
 from fake_useragent import UserAgent
 import logging
+from utils import get_logger
 
 logging.getLogger('fake_useragent').setLevel(logging.CRITICAL)
+log = get_logger("Stealth")
 
 class StealthMode:
     def __init__(self):
@@ -12,7 +14,8 @@ class StealthMode:
         try:
             self.ua = UserAgent()
             self.ua_active = True
-        except:
+        except Exception as e:
+            log.error(f"Error while trying to get User-Agent: {e}")
             self.ua = None
         self.base_headers = {
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
@@ -27,7 +30,8 @@ class StealthMode:
             "DNT": "1"
         }
 
-    def _get_engine(self, ua: str) -> str:
+    @staticmethod
+    def _get_engine(ua: str) -> str:
         if "firefox" in ua: return "firefox120"
         if "safari" in ua and "chrome" not in ua: return "safari15_5"
         return "chrome120"
@@ -63,7 +67,8 @@ class StealthMode:
 
         return headers, self._get_engine(full_ua.lower())
 
-    def _get_manual_ua(self) -> str:
+    @staticmethod
+    def _get_manual_ua() -> str:
         fallbacks = USER_AGENT_FALLBACK
         return random.choice(fallbacks)
 

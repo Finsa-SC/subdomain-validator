@@ -103,3 +103,5 @@ results
 *.txt
 !banner.txt
 test.py
+logs
+test

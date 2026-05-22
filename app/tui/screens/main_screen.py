@@ -7,8 +7,9 @@ from ..widgets.detail_panel import DetailPanel
 from ..widgets.stats_bar import StatsBar
 from ..filter_parser import FilterParser
 import threading
-from utils import can_screenshot, take_screenshot, do_screenshot
+from utils import do_screenshot, get_logger
 
+log = get_logger('main_screen')
 
 class MainScreen(Screen):
     BINDINGS = [
@@ -37,7 +38,9 @@ class MainScreen(Screen):
         self._rendered_count = 0
 
     def compose(self):
+        initial_query = self.config.query if self.config.query else ""
         yield Input(
+            value=initial_query,
             placeholder="Filter: status:200, server:nginx, NOT status:404",
             id="filter-input"
         )
@@ -64,9 +67,23 @@ class MainScreen(Screen):
 
     def on_subdomain_found(self, results):
         def update_ui():
+            subdomain = results.get("subdomain", "")
+            if subdomain:
+                import tldextract
+                from utils import load_result_from_cache
+
+                root = tldextract.extract(subdomain)
+                domain_root = f"{root.domain}{root.suffix}"
+
+                cached_data = load_result_from_cache(domain_root)
+                if subdomain in cached_data:
+                    cached_result = cached_data[subdomain]
+                    results.update({
+                        k: v for k, v in cached_result.items()
+                        if k in ["deep_scan", "honeypot_score", "honeypot_label", "honeypot_findings"]
+                    })
+
             self.results.append(results)
-            with open("/tmp/debug.log", "a") as f:
-                f.write(f"[ui] update_ui called, subdomain={results.get('subdomain')}, total={len(self.results)}\n")
             self.apply_filter()
             self.update_stats()
         self.app.call_from_thread(update_ui)
@@ -75,29 +92,29 @@ class MainScreen(Screen):
         if event.input.id == "filter-input":
             self.apply_filter()
 
+            table = self.query_one("#subdomain-table", SubdomainTable)
+            table.focus()
+
     def apply_filter(self):
         filter_input = self.query_one("#filter-input", Input)
         query = filter_input.value
         table = self.query_one("#subdomain-table", SubdomainTable)
 
         if not query.strip():
-            new_result = self.results[self._rendered_count:]
-            for r in new_result:
-                table.append_row(r)
-            self._rendered_count = len(self.results)
-            self.filtered_results = self.results.copy()
+            self.filtered_results = list(self.results)
         else:
-            self._rendered_count = 0
             self.filtered_results = self.parser.parse(query, self.results)
-            table.update_data(self.filtered_results)
+        table.update_data(self.filtered_results)
+        self.update_stats()
 
     def update_stats(self):
-        status_bar = self.query_one("#status-bar", StatsBar)
+        status_bar = self.query_one("#stats-bar", StatsBar)
         status_bar.update_stats(
             total=len(self.results),
             filtered=len(self.filtered_results),
             live=sum(1 for r in self.results if r.get("is_live")),
-            honeypots=sum(1 for r in self.results if r.get("is_honeypot"))
+            honeypots=sum(1 for r in self.results if r.get("is_honeypot")),
+            wildcard=sum(1 for r in self.results if r.get('wildcard'))
         )
 
     def action_focus_filter(self):
@@ -163,6 +180,7 @@ class MainScreen(Screen):
                 pyperclip.copy(selected['subdomain'])
                 self.notify(f"Copied: {selected['subdomain']}")
             except:
+                log.error(f"Clipboard not available")
                 self.notify("Clipboard not available", severity="error")
 
     def action_open_browser(self):
@@ -190,3 +208,12 @@ class MainScreen(Screen):
             if filter_input.has_focus:
                 table.focus()
                 event.stop()
+
+    def get_selected_data(self):
+        table = self.query_one("#subdomain-table", SubdomainTable)
+        return table.get_selected_row()
+
+    def get_all_subdomain(self) -> list[str]:
+        if self.filtered_results:
+            return [str(item['subdomain']) for item in self.filtered_results if 'subdomain' in item]
+        return []

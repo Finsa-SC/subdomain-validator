@@ -2,10 +2,15 @@ from dataclasses import dataclass
 
 @dataclass
 class ScanConfig:
-    # --- Required --- #
+    # --- Scan --- #
+    domain: str = None
+    domain_list: str = None
+
+    # --- Rule --- #
     timeout: float = 3.0
     thread: int = 5
     delay: float = 0.0
+    retry: int = 0
 
     # --- Discovery --- #
     source: str | None = None
@@ -13,12 +18,15 @@ class ScanConfig:
 
     # ---Filter--- #
     no_wildcard: bool = False
-    min_size: int | None = None
-    max_size: int | None = None
+    available: bool = True
+    live: bool = True
+    ip_address: str = None
+    query: str = None
 
     # --- Profiling --- #
     honeypot: bool = False
     screenshot: bool = False
+    deep_scan: bool = False
 
     # --- Dns --- #
     dns: str | None = None
@@ -27,6 +35,8 @@ class ScanConfig:
     # --- Save --- #
     save_file_plain: bool = False
     save_file_json: bool = False
+    fresh: bool = False
+
 _config = ScanConfig()
 
 def get_config() -> ScanConfig:

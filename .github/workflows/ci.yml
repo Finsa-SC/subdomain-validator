@@ -28,11 +28,16 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Test Standard Pip Installation
+        shell: bash
         run: |
           python -m pip install --upgrade pip
           pip install .
 
       - name: Test Run (Standard)
+        shell: bash
+        env:
+          TERM: xterm
+          FORCE_COLOR: "1"
         run: python app/main.py --help
 
       - name: Set up uv
@@ -42,6 +47,10 @@ jobs:
           enable-cache: true
 
       - name: Test uv Sync & Logic
+        shell: bash
+        env:
+          TERM: xterm
+          FORCE_COLOR: "1"
         run: |
           uv sync
           uv run python -c "import tldextract; print('tldextract loaded')"

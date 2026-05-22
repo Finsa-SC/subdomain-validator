@@ -1,7 +1,22 @@
 from utils import get_logger
 import socket
+import socks
+import os
 
 log = get_logger("port_scanner")
+PROXY_URL = os.getenv("PROXY_URL", "").strip().lower()
+DEBUG = str(os.getenv("DEBUG", 'false')).lower().strip() == 'true'
+
+if PROXY_URL and "socks5" in PROXY_URL:
+    try:
+        clean_url = PROXY_URL.replace("socks5://", "")
+        proxy_host, proxy_port = clean_url.split(":")
+
+        socks.set_default_proxy(socks.SOCKS5, proxy_host, int(proxy_port))
+        socket.socket = socks.socksocket
+        log.info(f"Port scanner successfully hooked to SOCKS5 Proxy: {proxy_host}:{proxy_port}")
+    except Exception as e:
+        log.error(f"Failed to hook SOCKS5 proxy to socket layer: {e}")
 
 def parse_port(ports: str) -> set:
     result = set()
@@ -50,6 +65,8 @@ def scan_port(host: str, ports: set[int], timeout: float = 1.0) -> dict[int, str
                     result[port] = 'filtered'
         except socket.timeout:
             result[port] = 'filtered'
-        except Exception:
+        except Exception as ex:
+            if DEBUG:
+                log.debug(f"Can't scan port: {ex}")
             continue
     return result

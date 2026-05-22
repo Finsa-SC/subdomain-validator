@@ -26,8 +26,8 @@ class SubdomainTable(DataTable):
             ip = r.get("ip_address", "No IP")
             server = self.truncate(r.get("server", "Unknown"), 10)
 
-            h_status = _normalize_status(r.get("http", {}).get("status"))
-            s_status = _normalize_status(r.get("https", {}).get("status"))
+            h_status = normalize_status(r.get("http", {}).get("status"))
+            s_status = normalize_status(r.get("https", {}).get("status"))
             status = f"{h_status}/{s_status}"
 
             self.add_row(icon, subdomain, ip, server, status)
@@ -41,8 +41,8 @@ class SubdomainTable(DataTable):
         subdomain = self.truncate(r.get("subdomain", ""), 38)
         ip = r.get("ip_address", "No IP")
         server = self.truncate(r.get("server", "Unknown"), 10)
-        h_status = _normalize_status(r.get("http", {}).get("status"))
-        s_status = _normalize_status(r.get("https", {}).get("status"))
+        h_status = normalize_status(r.get("http", {}).get("status"))
+        s_status = normalize_status(r.get("https", {}).get("status"))
 
         self.add_row(icon, subdomain, ip, server, f"{h_status}/{s_status}")
 
@@ -80,7 +80,7 @@ class SubdomainTable(DataTable):
         return None
 
 
-def _normalize_status(status):
+def normalize_status(status):
     if isinstance(status, int):
         return status
     return "-"

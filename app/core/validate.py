@@ -1,5 +1,5 @@
 ##Module Function
-from .request import send_request, send_request_with_error
+from .request import send_subdomain_request
 from models import get_config
 from utils import get_logger, scan_port
 
@@ -11,33 +11,42 @@ import socket
 import random
 import time
 
-
 log = get_logger("validate")
 
-TECH_SIGNATURES = {
-    "Cloudflare": ["cloudflare", "cf-ray"],
-    "PHP": ["x-powered-by: php", "php/"],
-    "WordPress": ["wordpress", "wp-"],
-    "Nginx": ["nginx"],
-    "Apache": ["apache"],
-    "Laravel": ["laravel_session", "laravel"],
-    "Django": ["csrftoken"],
-    "ASP.NET": ["x-aspnet-version", "x-powered-by: asp.net"],
-    "Node.js": ["x-powered-by: express"],
-    "Varnish": ["x-varnish", "via: varnish"],
-    "IIS": ["microsoft-iis"],
-}
-
 def _detech_tech(header: dict) -> list[str]:
+    patterns = {
+        "PHP": r"PHP\/([\d.]+)",
+        "Nginx": r"nginx\/([\d.]+)",
+        "Apache": r"Apache\/([\d.]+)",
+        "OpenSSL": r"OpenSSL\/([\w\d.]+)",
+        "LiteSpeed": r"LiteSpeed",
+        "Express": r"Express",
+        "ASP.NET": r"ASP\.NET",
+        "Cloudflare": r"cloudflare",
+    }
+
     if not header:
         return []
-    header_str = " ".join(
-        f"{k.lower()}: {v.lower()}" for k, v in header.items()
+
+    detected = []
+    header_str = "\n".join(
+        f"{k}: {v}" for k, v in header.items()
     )
-    return sorted(
-        name for name, kws in TECH_SIGNATURES.items()
-        if any(kw in header_str for kw in kws)
-    )
+
+    for name, pattern in patterns.items():
+        match = re.search(pattern, header_str, re.IGNORECASE)
+        try:
+            if match:
+                if match.group():
+                    version = match.group(1)
+                    detected.append(f"{name}: {version}")
+                else:
+                    detected.append(name)
+        except (IndexError, AttributeError):
+            if re.search(pattern, header_str, re.IGNORECASE):
+                detected.append(name)
+
+    return sorted(list(set(detected)))
 
 def _extract_title(res) -> str:
     try:
@@ -47,7 +56,8 @@ def _extract_title(res) -> str:
             title = html_module.unescape(match.group(1).strip())
             return title.replace("\n", " ").replace("\r", "")
         return "-"
-    except Exception:
+    except Exception as e:
+        log.error(f"Error while extract title: {e}")
         return "-"
 
 def parse_response(res, error: str | None) -> dict:
@@ -93,8 +103,8 @@ def validate_subdomain(sub, wildcard_baseline):
 
         custom_dns = config.dns
 
-        http_res, http_err = send_request_with_error("http", sub, config.timeout, custom_dns)
-        https_res, https_err = send_request_with_error("https", sub, config.timeout, custom_dns)
+        http_res, http_err = send_subdomain_request("http", sub, config.timeout, custom_dns, return_error_token=True)
+        https_res, https_err = send_subdomain_request("https", sub, config.timeout, custom_dns, return_error_token=True)
 
         h = parse_response(http_res, http_err)
         s = parse_response(https_res, https_err)
@@ -106,10 +116,6 @@ def validate_subdomain(sub, wildcard_baseline):
         https_title = s.get("title", "")
         https_size = s.get("size", 0) or 0
         timestamp = h.get("timestamp") or s.get("timestamp")
-
-        ##Size filtering
-        if size_filtering(http_size, https_size):
-            return None, None, None
 
         ##Validate Wildcard
         baselines = wildcard_baseline
@@ -129,7 +135,8 @@ def validate_subdomain(sub, wildcard_baseline):
                 baselines["https"]["title"] == https_title):
                 https_wildcard = True
         if (http_wildcard or https_wildcard) and config.no_wildcard:
-            return None, None, None
+            data = {"subdomain": sub, "signing": "[W]", "status": "Filtered (Wildcard)"}
+            return False, ip_address, data
 
         is_any_wildcard = http_wildcard or https_wildcard
         signing = sign(http_status, https_status, is_any_wildcard)
@@ -171,13 +178,25 @@ def validate_subdomain(sub, wildcard_baseline):
             if ports:
                 data["ports"] = ports
 
-        if config.screenshot:
+        if config.screenshot and (isinstance(http_status, int) or isinstance(https_status, int)):
             from utils import take_screenshot, can_screenshot
             ok, reason = can_screenshot(data)
             if ok:
                 success, path_or_err = take_screenshot(data)
                 if success:
                     data["screenshot"] = path_or_err
+
+        if config.deep_scan and (isinstance(http_status, int) or isinstance(https_status, int)):
+            from analysis import run_deep_scan
+
+            try:
+                run_deep_scan(
+                    result=data,
+                    on_module_done=_dummy_callback,
+                    timeout=3.0
+                )
+            except Exception as e:
+                log.error(f"Failed to auto deep scan for {sub}: {e}")
 
         status_ok = 200 in [http_status, https_status]
 
@@ -186,36 +205,14 @@ def validate_subdomain(sub, wildcard_baseline):
         log.error(f"Error: {sub} -> {e}")
         return False, "No IP", None
 
-def humane_sleep(base_delay: float):
+def humane_sleep(min_delay: float):
     config = get_config()
 
-    if config.delay > 0:
-        jitter = base_delay * 0.25
-        actual_delay = random.uniform(base_delay - jitter, base_delay + jitter)
-        time.sleep(actual_delay)
-    else:
-        time.sleep(random.uniform(0.1, 0.5))
+    if config.delay > 0.0:
+        jitter = min_delay + random.uniform(0.0, 1.0)
+        time.sleep(jitter)
 
-def size_filtering(http_size: int = 0, https_size: int = 0) -> bool:
-    config = get_config()
-
-    max_size = config.max_size
-    min_size = config.min_size
-
-    if isinstance(http_size, bytes):
-        http_size = len(http_size)
-    if isinstance(https_size, bytes):
-        https_size = len(https_size)
-
-    if min_size is not None and min_size > -1:
-        if (http_size <= 0 or http_size < min_size) and (https_size <= 0 or https_size < min_size):
-            return True
-    if max_size is not None and max_size > 0:
-        if (http_size <= 0 or http_size > max_size) and (https_size <= 0 or https_size > max_size):
-            return True
-    return False
-
-def sign(http_status, https_status, is_wildcard) -> str:
+def sign(http_status: int, https_status: int, is_wildcard: bool) -> str:
     if is_wildcard:
         return "[?]"
     elif http_status == 200 or https_status == 200:
@@ -224,3 +221,6 @@ def sign(http_status, https_status, is_wildcard) -> str:
         return "[!]"
     else:
         return "[-]"
+
+def _dummy_callback(key, deep_scan_state):
+    pass
