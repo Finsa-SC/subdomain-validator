@@ -69,16 +69,20 @@ def main():
     filter_group.add_argument("--ip", type=str, help="Show IP address instead of subdomain")
     filter_group.add_argument("-q", "--query", type=str,  help="Filter query (e.g. 'status:200 server:nginx NOT honeypot:true')")
 
-    # 4. EXPORT OPTIONS
-    export_group = parser.add_argument_group('EXPORT OPTIONS')
-    export_group.add_argument("-o", "--output", action="store_true", help="Save result as plain list")
-    export_group.add_argument("-oJ", "--output-json", action="store_true", help="Save result as JSON with detail")
-
-    # 3. PROFILING & ANALYSIS
+    # 4. PROFILING & ANALYSIS
     profile_group = parser.add_argument_group('PROFILING & ANALYSIS')
     profile_group.add_argument("--honeypot", action="store_true", help="Enable smart fingerprinting")
     profile_group.add_argument("--screenshot", action="store_true", help="Take screenshot to each subdomain with 200 status code")
     profile_group.add_argument("-X", "--deep-scan", action="store_true", help="Automaticaly run deep scan for each subdomain")
+
+    # 5. EXPORT OPTIONS
+    export_group = parser.add_argument_group('EXPORT OPTIONS')
+    export_group.add_argument("-o", "--output", action="store_true", help="Save result as plain list")
+    export_group.add_argument("-oJ", "--output-json", action="store_true", help="Save result as JSON with detail")
+
+    # 6. Scanning
+    scanning_group = parser.add_argument_group('Scanning')
+    scanning_group.add_argument("--fresh", action="store_true", help="Force fresh scan, ignore cache (cache < 2h auto-resume)")
 
     if len(sys.argv) == 1:
         parser.print_help()
@@ -126,6 +130,8 @@ def main():
         args.delay = 0.0
 
     config = ScanConfig(
+        domain=args.domain,
+        domain_list=args.domain_list,
         timeout=args.timeout,
         thread=args.thread,
         no_wildcard=args.no_wildcard,
@@ -140,7 +146,8 @@ def main():
         retry=args.retry,
         port=parse_port(args.port),
         query=filter_query,
-        deep_scan=args.deep_scan
+        deep_scan=args.deep_scan,
+        fresh=args.fresh
     )
 
     set_config(config)

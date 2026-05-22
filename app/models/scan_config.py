@@ -2,6 +2,10 @@ from dataclasses import dataclass
 
 @dataclass
 class ScanConfig:
+    # --- Scan --- #
+    domain: str = None
+    domain_list: str = None
+
     # --- Rule --- #
     timeout: float = 3.0
     thread: int = 5
@@ -31,6 +35,7 @@ class ScanConfig:
     # --- Save --- #
     save_file_plain: bool = False
     save_file_json: bool = False
+    fresh: bool = False
 
 _config = ScanConfig()
 

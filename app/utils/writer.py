@@ -1,9 +1,12 @@
-import hashlib, ipaddress, time, subprocess, platform, shutil, json, threading
+import hashlib, ipaddress, time, subprocess, platform, shutil, json, threading, os
 from pathlib import Path
+from dotenv import load_dotenv
 
 from models import PROXY_IPS
 from .logger import get_logger
 
+load_dotenv()
+DEBUG = os.getenv("debug", "false") == 'true'
 log = get_logger("writer")
 def check_results_dir():
     Path("results").mkdir(parents=True, exist_ok=True)
@@ -24,7 +27,7 @@ def save_file_healthy(domain: str, ip_sets: set[str]):
         for ip in ip_sets:
             if not is_proxy(ip):
                 file.write(f"{ip}\n")
-    log.error(f"Saved Healthy: {file_name}")
+    log.info(f"Saved Healthy: {file_name}")
 
 def save_file_problem(domain: str, ip_sets: set[str]):
     check_results_dir()
@@ -33,7 +36,7 @@ def save_file_problem(domain: str, ip_sets: set[str]):
         for ip in ip_sets:
             if not is_proxy(ip):
                 file.write(f"{ip}\n")
-    log.error(f"Saved Problem {file_name}")
+    log.info(f"Saved Problem {file_name}")
 
 def save_file_as_json(domain: str , all_results, scan_metadata):
     check_results_dir()
@@ -118,7 +121,7 @@ def save_file_as_json(domain: str , all_results, scan_metadata):
             indent=4,
             default=lambda o: dict(o) if hasattr(o, "items") else str(o)
         )
-    log.error(f"Saved JSON {file_name}")
+    log.info(f"Saved JSON {file_name}")
 
 def clean_item(item):
     keep_fields = {"status", "title", "server", "size", "redir", "latency", "tech", "body_hash"}
@@ -152,7 +155,9 @@ def schedule_cleanup(file_path: str, delay: float | int = 300.0):
             path_obj = Path(file_path)
             if path_obj.exists():
                 path_obj.unlink()
-                log.debug(f"Cleaned up temp file: {file_path}")
+
+                if DEBUG:
+                    log.debug(f"Cleaned up temp file: {file_path}")
         except Exception as e:
                 log.error(f"Failed to clean up temp file {file_path}: {e}")
 
@@ -194,3 +199,46 @@ def update_result_in_cache(domain: str, subdomain: str, update: dict):
                 json.dump(results, file, indent=2, default=lambda o: dict(o) if hasattr(o, 'items') else str(o))
     except Exception as e:
         log.error(f"Failed to update cache: {e}")
+
+def get_cache_age_hour(domain: str) -> float | None:
+    cache_file = get_cache_file(domain)
+    if not cache_file.exists():
+        return None
+
+    file_mtime = cache_file.stat().st_mtime
+    age_second = time.time() - file_mtime
+    age_hour = age_second / 3600
+    return age_hour
+
+def is_cached_valid(domain: str, fresh: bool) -> bool:
+    if fresh:
+        log.info(f"Fresh scan requested, ignoring cache for {domain}")
+        return False
+
+    age = get_cache_age_hour(domain)
+    if age is None:
+        log.error(f"No cached found for {domain}")
+        return False
+
+    if age <= 2.0:
+        if DEBUG:
+            log.debug(f"Cache valid: {age:.1f} hours old, using cached results")
+        return True
+    else:
+        if DEBUG:
+            log.debug(f"Cache expired: {age:.1f} hours old (> 2h), performing fresh scan")
+        return False
+
+def get_scanned_from_cache(domain: str) -> set[str]:
+    cached_data = load_result_from_cache(domain)
+    return set(cached_data.keys())
+
+def clear_cache(domain: str):
+    cache_file = get_cache_file(domain)
+    try:
+        if cache_file.exists():
+            cache_file.unlink()
+        if DEBUG:
+            log.debug(f"Cache cleared for {domain}")
+    except Exception as e:
+        log.error(f"Failed to clear cache: {e}")

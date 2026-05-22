@@ -27,7 +27,7 @@ class SubdomainScannerTUI(App):
 
     def action_force_quit(self):
         app_state.stop()
-        if hasattr(app_state, 'executor'):
+        if hasattr(app_state, 'executor') and app_state.executor is not None:
             app_state.executor.shutdown(wait=False, cancel_futures=True)
         self.exit()
         sys.exit(0)

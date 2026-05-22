@@ -295,6 +295,7 @@ class FullscreenDetail(Screen):
     @work(thread=True)
     def action_deep_scan(self):
         from analysis import run_deep_scan
+
         def on_module_done(key, states):
             self.app.call_from_thread(self._refresh_detail)
 
