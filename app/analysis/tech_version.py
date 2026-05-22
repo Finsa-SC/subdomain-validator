@@ -1,7 +1,11 @@
+from dotenv import load_dotenv
+
 from utils import get_logger
-import re
+import re, os
 
 log = get_logger("tech_version")
+load_dotenv()
+DEBUG = os.getenv("DEBUG", "false") == "true"
 
 HEADER_PATTERNS = [
     # Server header
@@ -205,7 +209,11 @@ def detect_version(result: dict, timeout: float = 8.0) -> dict:
 
     final = list(deduped.values())
     summary = _build_summary(final)
-    log.info(f"{result.get('subdomain')}: tech versions → {summary}")
+
+    if DEBUG:
+        log.info(f"{result.get('subdomain')}: tech versions → {summary}")
+        log.info(f"[--DEBUG] {result.get('subdomain')}: Found {len(all_found)} raw hits")
+        log.info(f"[--DEBUG] {result.get('subdomain')}: Summary keys -> {list(summary.keys())}")
 
     tech_list = []
     for tech, version in summary.items():

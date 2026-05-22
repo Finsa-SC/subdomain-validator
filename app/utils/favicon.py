@@ -1,8 +1,13 @@
 from urllib.parse import urlparse, urljoin
-import mmh3, hashlib, base64, re
+import mmh3, hashlib, base64, re, os
+from dotenv import load_dotenv
+
 from .logger import get_logger
 
 log = get_logger("favicon")
+load_dotenv()
+DEBUG = os.getenv("DEBUG", "false") == "true"
+
 KNOWN_FAVICON_HASHES: dict[int, str] = {
     # CMS
     -1255853263: "WordPress",
@@ -137,5 +142,6 @@ def fetch_favicon(result: dict, timeout: float = 5.0) -> dict:
         "shodan_query": f"http.favicon.hash:{mmh3_hash}",
     })
 
-    log.info(f"{subdomain}: favicon mmh3={mmh3_hash} matched={match or 'unknown'}")
+    if DEBUG:
+        log.info(f"{subdomain}: favicon mmh3={mmh3_hash} matched={match or 'unknown'}")
     return out
