@@ -109,16 +109,23 @@ def launch_terminal(action_key: str, target: str, custom_cmd: str = None, techno
         if not template and not custom_cmd:
             return False
 
+        SEARCHSPLOIT_SKIP_KEYWORDS = {
+            "cloudflare", "akamai", "fastly", "incapsula",
+            "sucuri", "imperva", "cdn", "waf"
+        }
+
         if action_key == "searchsploit" and technologies:
             clean_tech_list = []
             for tech in technologies:
                 cleaned = tech.replace(":", "")
-                if cleaned:
+                if cleaned and cleaned.lower() not in SEARCHSPLOIT_SKIP_KEYWORDS:
                     clean_tech_list.append(cleaned)
 
             if clean_tech_list:
-                cmd_list = [f"searchsploit {t}" for t in clean_tech_list[:3]]
-                full_cmd = " ; ".join(cmd_list)
+                cmd_list = []
+                for t in clean_tech_list:
+                    f'echo "=== SEARCHSPLOIT: {t} ===" && searchsploit "{t}"'
+                full_cmd = " && ".join(cmd_list)
             else:
                 full_cmd = template['command'].format(target=target)
         else:
