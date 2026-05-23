@@ -132,7 +132,7 @@ def launch_terminal(action_key: str, target: str, custom_cmd: str = None, techno
             full_cmd = template['command'].format(target=target)
     log.debug(full_cmd)
 
-    if _launch_by_system(full_cmd, system):
+    if _launch_by_system(full_cmd):
         return True
     else:
         log.error(f"Unsupported platform: {system}")
@@ -164,7 +164,7 @@ def launch_terminal_multi(action_key: str, targets: list[str], custom_cmd: str =
                 file_path=str(file_path)
             )
 
-            ok = _launch_by_system(bulk_cmd, system)
+            ok = _launch_by_system(bulk_cmd)
 
             if ok:
                 schedule_cleanup(str(file_path), delay=300)
@@ -181,7 +181,7 @@ def launch_terminal_multi(action_key: str, targets: list[str], custom_cmd: str =
     if custom_cmd:
         try:
             full_cmd = custom_cmd
-            ok = _launch_by_system(full_cmd, system)
+            ok = _launch_by_system(full_cmd)
             return ok
 
         except Exception as e:
@@ -244,7 +244,8 @@ def _launch_linux(cmd: str) -> bool:
             continue
     return False
 
-def _launch_by_system(cmd: str, system: str) -> bool:
+def _launch_by_system(cmd: str) -> bool:
+    system = platform.system()
     if system == 'Windows':
         return _launch_windows(cmd)
     elif system == 'Darwin':
@@ -252,3 +253,10 @@ def _launch_by_system(cmd: str, system: str) -> bool:
     elif system == 'Linux':
         return _launch_linux(cmd)
     return False
+
+def _get_shell_info() -> tuple[str, str]:
+    system = platform.system()
+    if system == "Windows":
+        return "cmd", "&"
+
+    return "bash", "&&"
