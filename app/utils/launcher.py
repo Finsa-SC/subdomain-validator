@@ -111,22 +111,14 @@ def launch_terminal(action_key: str, target: str, custom_cmd: str = None, techno
             return False
 
         if action_key == "searchsploit" and technologies:
-            clean_tech_list = []
-            for tech in technologies:
-                cleaned = tech.replace(":", "")
-                if cleaned and cleaned.lower() not in SEARCHSPLOIT_SKIP_KEYWORDS:
-                    clean_tech_list.append(cleaned)
-
-            if clean_tech_list:
-                cmd_list = []
-                for t in clean_tech_list:
-                    f'echo "=== SEARCHSPLOIT: {t} ===" && searchsploit "{t}"'
-                full_cmd = " && ".join(cmd_list)
-            else:
+            full_cmd = _get_searchsploit_cmd(technologies)
+            if not full_cmd:
                 full_cmd = template['command'].format(target=target)
         else:
             full_cmd = template['command'].format(target=target)
-    log.debug(full_cmd)
+
+    if DEBUG:
+        log.debug(f"CMD: {full_cmd}")
 
     if _launch_by_system(full_cmd):
         return True
@@ -198,8 +190,9 @@ def _launch_windows(cmd: str) -> bool:
         return False
 
 def _launch_macos(cmd: str) -> bool:
+    escaped = cmd.replace('"', '\\"')
     try:
-        script = f'tell application "Terminal" to do script "{cmd}"'
+        script = f'tell application "Terminal" to do script "{escaped}"'
         subprocess.Popen(["osascript", "-e", script])
         return True
     except Exception as e:
@@ -208,21 +201,28 @@ def _launch_macos(cmd: str) -> bool:
 
 def _launch_linux(cmd: str) -> bool:
     shell = "fish" if shutil.which("fish") else "bash"
+    if shell == "fish":
+        pause = "; echo ''; echo 'Done. Press enter...'; read"
+    else:
+        pause = "; echo ''; read -p 'Done. Press enter...'"
+
     terminals = [
-        ["alacritty", "-e", shell, "-c", f"{cmd}; read"],
+        ["alacritty", "-e", shell, "-c", f"{cmd}{pause}; read"],
         ["konsole", "--noclose", "-e", shell, "-c", cmd],
-        ["kitty", shell, "-c", f"{cmd}; read"],
-        ["wezterm", "start", "--", shell, "-c", f"{cmd}; read"],
-        ["terminator", "-e", f"{shell} -c '{cmd}; read'"],
-        ["xfce4-terminal", "--hold", "-e", f"{shell} -c '{cmd}'"],
-        ["xterm", "-hold", "-e", f"{shell} -c '{cmd}'"],
-        ["st", "-e", shell, "-c", f"{cmd}; read"],
-        ["foot", shell, "-c", f"{cmd}; read"],
-        ["gnome-terminal", "--", shell, "-c", f"{cmd}; read"],
-        ["qterminal", "-e", f"{shell} -c '{cmd}; read'"],
+        ["kitty", shell, "-c", f"{cmd}{pause}; read"],
+        ["wezterm", "start", "--", shell, "-c", f"{cmd}{pause}; read"],
+        ["terminator", "-e", f"{shell} -c '{cmd}{pause}; read'"],
+        ["xfce4-terminal", "--hold", "-e", f"{shell} -c '{cmd}{pause}'"],
+        ["xterm", "-hold", "-e", f"{shell} -c '{cmd}{pause}'"],
+        ["st", "-e", shell, "-c", f"{cmd}{pause}; read"],
+        ["foot", shell, "-c", f"{cmd}{pause}; read"],
+        ["gnome-terminal", "--", shell, "-c", f"{cmd}{pause}; read"],
+        ["qterminal", "-e", f"{shell} -c '{cmd}{pause}; read'"],
     ]
 
     for term in terminals:
+        if not shutil.which(term[0]):
+            continue
         try:
             subprocess.Popen(
                 term,
