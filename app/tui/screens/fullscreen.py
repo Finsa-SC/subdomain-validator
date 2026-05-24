@@ -17,6 +17,11 @@ from ..widgets import format_redirect
 
 log = get_logger("fullscreen")
 
+def _get_status_value(status_field) -> str:
+    if hasattr(status_field, "value"):
+        return status_field.value
+    return str(status_field)
+
 class FullscreenDetail(Screen):
     BINDINGS = [
         Binding("f", "dismiss_screen", "Close Fullscreen"),
@@ -99,11 +104,12 @@ class FullscreenDetail(Screen):
             else:
                 return f"[#565F89]{status}[/]"
 
-        # Deep Scan Results
+## Deep Scan Results
+        # Favicon
         if 'favicon' in deep_data:
             sections.append(Rule(title="[bold #00A3FF]FAVICON IDENTIFICATION[/]", style="#1A1B26", align='left'))
             fav_info = deep_data.get("favicon")
-            status = fav_info['status'].value
+            status = _get_status_value(fav_info['status'])
 
             status_str = formatting_status(status)
 
@@ -120,6 +126,116 @@ class FullscreenDetail(Screen):
                 if d.get("shodan_query"):
                     deep_table.add_row("", f"  [#565F89]Scan:[/] {d['shodan_query']}")
             sections.append(fav_table)
+
+        # Page Recon Results
+        if 'page_recon' in deep_data:
+            sections.append(Rule(title="[bold #00A3FF]PAGE RECON[/]", style="#1A1B26", align='left'))
+            pr_info = deep_data.get("page_recon")
+            pr_status = _get_status_value(pr_info['status'])
+            pr_status_str = formatting_status(pr_status)
+
+            pr_table = _make_table()
+            pr_table.add_row("Page Recon", pr_status_str)
+
+            if pr_status == "done" and pr_info.get("data"):
+                d = pr_info["data"]
+
+                total_urls = d.get("total_urls", 0)
+                pr_table.add_row("Total URLs", f"[#00E0FF]{total_urls}[/] found")
+
+                # All extracted URLs
+                all_urls = d.get("urls", [])
+                internal_urls = [u for u in all_urls if u.get("internal")]
+                if internal_urls:
+                    pr_table.add_row("", "")
+                    pr_table.add_row("[#565F89]Internal URLs[/]", "")
+                    for entry in internal_urls[:30]:
+                        pr_table.add_row("", f"[#00E0FF]{entry.get('url', '')}[/]")
+                    if len(internal_urls) > 30:
+                        pr_table.add_row("", f"[#565F89]  +{len(internal_urls) - 30} more...[/]")
+
+                external_urls = [u for u in all_urls if not u.get("internal")]
+                if external_urls:
+                    pr_table.add_row("", "")
+                    pr_table.add_row("[#565F89]External URLs[/]", "")
+                    for entry in external_urls[:10]:
+                        pr_table.add_row("", f"[#565F89]{entry.get('url', '')}[/]")
+                    if len(external_urls) > 10:
+                        pr_table.add_row("", f"[#565F89]  +{len(external_urls) - 10} more...[/]")
+
+                pr_table.add_row("", "")
+
+                # Login
+                login = d.get("login", {})
+                if login.get("detected"):
+                    login_paths = login.get("paths", [])
+                    pr_table.add_row(
+                        "Login Page",
+                        f"[#73DACA]✓ Detected[/] [#565F89]({login.get('signal_count', 0)} signals)[/]"
+                    )
+                    for url in login_paths[:5]:
+                        pr_table.add_row("", f"  [#565F89]↳[/] [#73DACA]{url}[/]")
+                else:
+                    pr_table.add_row("Login Page", "[#565F89]Not detected[/]")
+
+                # Register
+                register = d.get("register", {})
+                if register.get("detected"):
+                    register_paths = register.get("paths", [])
+                    pr_table.add_row(
+                        "Register Page",
+                        f"[#73DACA]✓ Detected[/] [#565F89]({register.get('signal_count', 0)} signals)[/]"
+                    )
+                    for url in register_paths[:5]:
+                        pr_table.add_row("", f"  [#565F89]↳[/] [#73DACA]{url}[/]")
+                else:
+                    pr_table.add_row("Register Page", "[#565F89]Not detected[/]")
+
+                # Admin
+                admin = d.get("admin", {})
+                if admin.get("detected"):
+                    admin_paths = admin.get("paths", [])
+                    pr_table.add_row(
+                        "Admin Panel",
+                        f"[#F7768E]⚠ Detected[/] [#565F89]({admin.get('signal_count', 0)} signals)[/]"
+                    )
+                    for url in admin_paths[:5]:
+                        pr_table.add_row("", f"  [#565F89]↳[/] [#F7768E]{url}[/]")
+                else:
+                    pr_table.add_row("Admin Panel", "[#565F89]Not detected[/]")
+
+                sections.append(pr_table)
+
+                # Interesting URLs section
+                interesting = d.get("interesting", [])
+                if interesting:
+                    sections.append(Rule(title="[bold #00A3FF]INTERESTING URLS[/]", style="#1A1B26", align='left'))
+                    category_colors = {
+                        "api": "#BB9AF7",
+                        "auth": "#73DACA",
+                        "register": "#73DACA",
+                        "admin": "#F7768E",
+                        "file": "#FFD700",
+                        "sensitive": "#F7768E",
+                        "page": "#565F89",
+                    }
+                    url_table = _make_table()
+                    for entry in interesting[:30]:
+                        cat = entry.get("category", "page")
+                        color = category_colors.get(cat, "#565F89")
+                        url_table.add_row(
+                            f"[{color}]{cat}[/]",
+                            f"[#00E0FF]{entry.get('url', '')}[/]"
+                        )
+                    if len(interesting) > 30:
+                        url_table.add_row(
+                            "[#565F89]...[/]",
+                            f"[#565F89]+{len(interesting) - 30} more[/]"
+                        )
+                    sections.append(url_table)
+
+            else:
+                sections.append(pr_table)
 
         # Headers http
         sections.append(Rule(title="[bold #00A3FF]HTTP Headers[/]", style="#1A1B26", align='left'))
@@ -322,7 +438,7 @@ class FullscreenDetail(Screen):
         tech_module = deep_data.get('tech_version', {})
 
         status_obj = tech_module.get("status")
-        if status_obj and status_obj.value == 'done':
+        if _get_status_value(status_obj) == 'done':
             data_content = tech_module.get('data')
             if data_content and 'summary' in data_content:
                 new_tech_list = []

@@ -19,6 +19,10 @@ def _run_tech_version(result: dict, timeout: float) -> dict:
     from .tech_version import detect_version
     return detect_version(result, timeout)
 
+def _run_page_recon(result: dict, timeout: float) -> dict:
+    from .page_recon import run_page_recon
+    return run_page_recon(result, timeout)
+
 MODULES: dict[str, dict] = {
     "favicon": {
         "label": "Favicon Hash",
@@ -28,6 +32,10 @@ MODULES: dict[str, dict] = {
         "label": "Tech Versions",
         "fn":    _run_tech_version,
     },
+    "page_recon": {
+        "label": "Page Recon",
+        "fn": _run_page_recon,
+    }
 }
 
 def initial_state():

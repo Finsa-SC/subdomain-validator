@@ -49,12 +49,18 @@ class SubdomainScanner:
             log.error(f"Mode -dL Active: No such file: {file_path}")
             return False
 
+        domain_root_found = None
         try:
             with open(file_path, 'r') as f:
-                first_line = f.readline().strip()
-            self.domain_root = get_domain_root(first_line) if '.' in first_line else first_line
-        except:
-            self.domain_root = "file_scan_target"
+                for line in f:
+                    first_line = line.strip()
+                    if first_line and not first_line.startswith("#"):
+                        domain_root_found = get_domain_root(first_line) if '.' in first_line else first_line
+                        break
+        except Exception as e:
+            log.error(f"Failed to read domain list: {e}")
+
+        self.domain_root = domain_root_found or "file_scan_target"
 
         def _file_gen():
             with open(file_path, 'r') as file:
@@ -62,6 +68,7 @@ class SubdomainScanner:
                     s = line.strip()
                     if s and not s.startswith("#"):
                         yield s
+
         self.subdomain_iter = iter(_file_gen())
         return True
 
@@ -108,7 +115,14 @@ class SubdomainScanner:
             clear_cache(domain=self.domain_root)
             self.scanned_subs = set()
         else:
-            self.scanned_subs = get_scanned_from_cache(self.domain_root)
+            from utils.writer import get_cache_age_hour
+            age = get_cache_age_hour(self.domain_root)
+            if age is not None and age > 2.0:
+                log.info(f"Cache expired ({age:.1f}h), clearing for fresh scan")
+                clear_cache(domain=self.domain_root)
+                self.scanned_subs = set()
+            else:
+                self.scanned_subs = get_scanned_from_cache(self.domain_root)
             if self.scanned_subs and DEBUG:
                 log.info(f"Resume: Found {len(self.scanned_subs)} previously scanned subdomains")
 

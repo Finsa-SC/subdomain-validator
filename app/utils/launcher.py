@@ -3,6 +3,8 @@ import tempfile
 from pathlib import Path
 
 from dotenv import load_dotenv
+from jinja2.lexer import integer_re
+
 from .logger import get_logger
 
 log = get_logger("Launcher")
@@ -12,6 +14,7 @@ DEBUG = os.getenv("DEBUG", '').lower().strip() == 'true'
 nmap = "NMAP"
 ffuf = "FFUF"
 sqlmap = "SQLMAP"
+SYSTEM_OS = platform.system()
 
 COMMAND_TEMPLATES = {
     "nmap_quick": {
@@ -68,8 +71,8 @@ COMMAND_TEMPLATES = {
         "command": "wafw00f https://{target}",
         "command_multi": "wafw00f -i {file_path}"
     },
-    "searchploit": {
-        "tool": "SEARCHPLOIT",
+    "searchsploit": {
+        "tool": "SEARCHSPLOIT",
         "description": "Exploit database local search",
         "command": "searchsploit {target}",
         "command_multi": None
@@ -100,17 +103,26 @@ COMMAND_TEMPLATES = {
     }
 }
 
-def launch_terminal(action_key: str, target: str, custom_cmd: str = None):
+def launch_terminal(action_key: str, target: str, custom_cmd: str = None, technologies: list[str] = None):
     system = platform.system()
     if custom_cmd:
         full_cmd = custom_cmd
     else:
-        template = COMMAND_TEMPLATES.get(action_key, "{target}")
+        template = COMMAND_TEMPLATES.get(action_key, {"command": "{target}"})
         if not template and not custom_cmd:
             return False
-        full_cmd = template['command'].format(target=target)
 
-    if _launch_by_system(full_cmd, system):
+        if action_key == "searchsploit" and technologies:
+            full_cmd = _get_searchsploit_cmd(technologies)
+            if not full_cmd:
+                full_cmd = template['command'].format(target=target)
+        else:
+            full_cmd = template['command'].format(target=target)
+
+    if DEBUG:
+        log.debug(f"CMD: {full_cmd}")
+
+    if _launch_by_system(full_cmd):
         return True
     else:
         log.error(f"Unsupported platform: {system}")
@@ -120,7 +132,6 @@ def launch_terminal_multi(action_key: str, targets: list[str], custom_cmd: str =
     from utils import schedule_cleanup
 
     template = COMMAND_TEMPLATES.get(action_key)
-    system = platform.system()
 
     if not template and not custom_cmd:
         log.error(f"No template found for action: {action_key}")
@@ -142,7 +153,7 @@ def launch_terminal_multi(action_key: str, targets: list[str], custom_cmd: str =
                 file_path=str(file_path)
             )
 
-            ok = _launch_by_system(bulk_cmd, system)
+            ok = _launch_by_system(bulk_cmd)
 
             if ok:
                 schedule_cleanup(str(file_path), delay=300)
@@ -159,7 +170,7 @@ def launch_terminal_multi(action_key: str, targets: list[str], custom_cmd: str =
     if custom_cmd:
         try:
             full_cmd = custom_cmd
-            ok = _launch_by_system(full_cmd, system)
+            ok = _launch_by_system(full_cmd)
             return ok
 
         except Exception as e:
@@ -181,8 +192,9 @@ def _launch_windows(cmd: str) -> bool:
         return False
 
 def _launch_macos(cmd: str) -> bool:
+    escaped = cmd.replace('"', '\\"')
     try:
-        script = f'tell application "Terminal" to do script "{cmd}"'
+        script = f'tell application "Terminal" to do script "{escaped}"'
         subprocess.Popen(["osascript", "-e", script])
         return True
     except Exception as e:
@@ -191,21 +203,28 @@ def _launch_macos(cmd: str) -> bool:
 
 def _launch_linux(cmd: str) -> bool:
     shell = "fish" if shutil.which("fish") else "bash"
+    if shell == "fish":
+        pause = "; echo ''; echo 'Done. Press enter...'; read"
+    else:
+        pause = "; echo ''; read -p 'Done. Press enter...'"
+
     terminals = [
-        ["alacritty", "-e", shell, "-c", f"{cmd}; read"],
+        ["alacritty", "-e", shell, "-c", f"{cmd}{pause}; read"],
         ["konsole", "--noclose", "-e", shell, "-c", cmd],
-        ["kitty", shell, "-c", f"{cmd}; read"],
-        ["wezterm", "start", "--", shell, "-c", f"{cmd}; read"],
-        ["terminator", "-e", f"{shell} -c '{cmd}; read'"],
-        ["xfce4-terminal", "--hold", "-e", f"{shell} -c '{cmd}'"],
-        ["xterm", "-hold", "-e", f"{shell} -c '{cmd}'"],
-        ["st", "-e", shell, "-c", f"{cmd}; read"],
-        ["foot", shell, "-c", f"{cmd}; read"],
-        ["gnome-terminal", "--", shell, "-c", f"{cmd}; read"],
-        ["qterminal", "-e", f"{shell} -c '{cmd}; read'"],
+        ["kitty", shell, "-c", f"{cmd}{pause}; read"],
+        ["wezterm", "start", "--", shell, "-c", f"{cmd}{pause}; read"],
+        ["terminator", "-e", f"{shell} -c '{cmd}{pause}; read'"],
+        ["xfce4-terminal", "--hold", "-e", f"{shell} -c '{cmd}{pause}'"],
+        ["xterm", "-hold", "-e", f"{shell} -c '{cmd}{pause}'"],
+        ["st", "-e", shell, "-c", f"{cmd}{pause}; read"],
+        ["foot", shell, "-c", f"{cmd}{pause}; read"],
+        ["gnome-terminal", "--", shell, "-c", f"{cmd}{pause}; read"],
+        ["qterminal", "-e", f"{shell} -c '{cmd}{pause}; read'"],
     ]
 
     for term in terminals:
+        if not shutil.which(term[0]):
+            continue
         try:
             subprocess.Popen(
                 term,
@@ -222,11 +241,43 @@ def _launch_linux(cmd: str) -> bool:
             continue
     return False
 
-def _launch_by_system(cmd: str, system: str) -> bool:
-    if system == 'Windows':
+def _launch_by_system(cmd: str) -> bool:
+    if SYSTEM_OS == 'Windows':
         return _launch_windows(cmd)
-    elif system == 'Darwin':
+    elif SYSTEM_OS == 'Darwin':
         return _launch_macos(cmd)
-    elif system == 'Linux':
+    elif SYSTEM_OS == 'Linux':
         return _launch_linux(cmd)
     return False
+
+def _get_shell_info() -> tuple[str, str]:
+    system = platform.system()
+    if system == "Windows":
+        return "cmd", "&"
+
+    return "bash", "&&"
+
+def _get_searchsploit_cmd(technologies: list[str]) -> str | None:
+    SEARCHSPLOIT_SKIP_KEYWORDS = {
+        "cloudflare", "akamai", "fastly", "incapsula",
+        "sucuri", "imperva", "cdn", "waf"
+    }
+
+    clean_tech_list = []
+    for tech in technologies:
+        cleaned = tech.replace(":", "").strip()
+        if cleaned and cleaned.lower() not in SEARCHSPLOIT_SKIP_KEYWORDS:
+            clean_tech_list.append(cleaned)
+
+    if not clean_tech_list:
+        log.warning("searchsploit: all techlogies filtered")
+        return None
+
+    clean_tech_list = clean_tech_list[:3]
+
+    if SYSTEM_OS == "Windows":
+        parts = [f'echo === SEARCHSPLOIT: {t} === & searchsploit "{t}"' for t in clean_tech_list]
+        return " & ".join(parts)
+    else:
+        parts = [f'echo "\\n=== SEARCHSPLOIT: {t} ===" && searchsploit "{t}"' for t in clean_tech_list]
+        return " && ".join(parts)

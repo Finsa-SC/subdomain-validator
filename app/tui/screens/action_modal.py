@@ -23,6 +23,10 @@ class ActionModal(ModalScreen):
         self.cmd_preview = ""
         self.edit_mode = False
 
+        h_tech = self.result.get("http", {}).get('tech', [])
+        s_tech = self.result.get("https", {}).get('tech', [])
+        self.combined = list(set(h_tech) | set(s_tech))
+
     def compose(self) -> ComposeResult:
         with Container(id="action-modal-container"):
             yield Static(id="action-list")
@@ -165,7 +169,7 @@ class ActionModal(ModalScreen):
         if self.current_index < len(self.action):
             key, template = self.action[self.current_index]
             self.notify(f"Launching: {key.upper()}", timeout=2)
-            success = launch_terminal(key, self.target)
+            success = launch_terminal(key, self.target, technologies=self.combined)
 
             if success:
                 self.app.pop_screen()

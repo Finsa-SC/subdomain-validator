@@ -106,7 +106,8 @@ def fetch_favicon(result: dict, timeout: float = 5.0) -> dict:
     is_invalid = not data or (data and b"<html" in data[:500].lower())
 
     if is_invalid:
-        log.debug(f"{subdomain}: /favicon.ico Empty, trying parse HTML...")
+        if DEBUG:
+            log.debug(f"{subdomain}: /favicon.ico Empty, trying parse HTML...")
         html_bytes, html_type = _fetch_content(base_url, timeout)
 
         if not html_bytes:

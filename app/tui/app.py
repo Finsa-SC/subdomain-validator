@@ -14,6 +14,7 @@ class SubdomainScannerTUI(App):
         Binding("q", "force_quit", "Quit", priority=True),
         Binding("a", "open_action_menu", priority=True),
         Binding("A", "open_multi_action", "Multi Action"),
+        Binding("b", "open_browser", "Open Browser"),
         Binding("ctrl+c", "force_quit", "Quit", show=False),
     ]
 
@@ -54,6 +55,26 @@ class SubdomainScannerTUI(App):
                 self.notify("No subdomain available for mass action", severity='warning')
         else:
             self.notify("Multi-action not available on this screen", severity='error')
+
+    def action_open_browser(self):
+        active_screen = self.screen
+        if hasattr(active_screen, "get_selected_data"):
+            selected = active_screen.get_selected_data()
+        elif hasattr(active_screen, "result"):
+            selected = active_screen.result
+        else:
+            self.notify("Not available here", severity="warning")
+            return
+
+        if not selected:
+            self.notify("Select a subdomain first", severity="warning")
+            return
+
+        import webbrowser
+        proto = "https" if selected.get("https", {}).get("status") == 200 else "http"
+        url = f"{proto}://{selected['subdomain']}"
+        webbrowser.open(url)
+        self.notify(f"Opened: {url}")
 
 def run_tui(config, domain_or_file):
     app = SubdomainScannerTUI(config, domain_or_file)

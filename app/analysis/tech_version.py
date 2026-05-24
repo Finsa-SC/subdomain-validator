@@ -147,7 +147,7 @@ def _fetch_body(result: dict, timeout: float = 8.0) -> str | None:
         allow_redirects=True,
     )
     
-    if res.status_code == 200 and res.content:
+    if res and res.status_code == 200 and res.content:
         res.encoding = res.charset_encoding or "utf-8"
         return res.text
     return None
