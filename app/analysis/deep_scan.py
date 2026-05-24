@@ -32,6 +32,10 @@ MODULES: dict[str, dict] = {
         "label": "Tech Versions",
         "fn":    _run_tech_version,
     },
+    "page_recon": {
+        "label": "Page Recon",
+        "fn": _run_page_recon,
+    }
 }
 
 def initial_state():
