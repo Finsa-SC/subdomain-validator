@@ -300,7 +300,7 @@ def _fetch_js(url: str, timeout: float) -> str | None:
         pass
     return None
 
-def _scan_js_credentials(js_content: str, source_url: str) -> list[dict]:
+def _scan_js_for_credentials(js_content: str, source_url: str) -> list[dict]:
     findings = []
     seen = set()
 
@@ -326,3 +326,37 @@ def _scan_js_credentials(js_content: str, source_url: str) -> list[dict]:
 
 def _get_line_hint(content: str, pos: int) -> int:
     return content[:pos].count("\n") + 1
+
+def _scan_js_credentials(urls: list[dict], timeout: float) -> dict:
+    out = {
+        "js_scanned": [],
+        "findings": [],
+        "total_found": 0
+    }
+
+    js_urls = [
+        for u in urls
+        if u .get("internal") and u.get("url", "").split("?")[0].endswith(".js")
+    ]
+
+    for entry in js_urls
+        url = entry.get('url', '')
+        if _is_important_js(url):
+            out['js_scanned'].append(url)
+
+    for js_url in out['js_scanned'][:10]:
+        content = _fetch_js(js_url, timeout)
+        if not content:
+            continue
+        hits = _scan_js_for_credentials(content, js_url)
+        out['findings'].extend(hits)
+
+    out['total_found'] = len(out['findings'])
+
+    if DEBUG:
+        log.debug(
+            f"js_credential: scanned={len(out['js_scanned'])}, "
+            f"skipped={len(out['js_skipped'])}, "
+            f"findings={out['total_found']}"
+        )
+    return out
