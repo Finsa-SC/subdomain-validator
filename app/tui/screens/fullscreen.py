@@ -17,6 +17,11 @@ from ..widgets import format_redirect
 
 log = get_logger("fullscreen")
 
+def _get_status_value(status_field) -> str:
+    if hasattr(status_field, "status"):
+        return status_field.status
+    return str(status_field)
+
 class FullscreenDetail(Screen):
     BINDINGS = [
         Binding("f", "dismiss_screen", "Close Fullscreen"),
@@ -104,7 +109,7 @@ class FullscreenDetail(Screen):
         if 'favicon' in deep_data:
             sections.append(Rule(title="[bold #00A3FF]FAVICON IDENTIFICATION[/]", style="#1A1B26", align='left'))
             fav_info = deep_data.get("favicon")
-            status = fav_info['status'].value
+            status = _get_status_value(fav_info['status'])
 
             status_str = formatting_status(status)
 
@@ -126,7 +131,7 @@ class FullscreenDetail(Screen):
         if 'page_recon' in deep_data:
             sections.append(Rule(title="[bold #00A3FF]PAGE RECON[/]", style="#1A1B26", align='left'))
             pr_info = deep_data.get("page_recon")
-            pr_status = pr_info['status'].value
+            pr_status = _get_status_value(pr_info['status'])
             pr_status_str = formatting_status(pr_status)
 
             pr_table = _make_table()
