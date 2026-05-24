@@ -208,6 +208,12 @@ def run_page_recon(result: dict, timeout: float) -> dict:
         "admin": {"detected": False, "paths": []},
         "body_fetched": False,
         "total_urls": 0,
+        "js_credentials": {
+            "js_scanned": [],
+            "js_skipped": [],
+            "findings": [],
+            "total_found": 0
+        },
     }
 
     body, base_url = _fetch_body(result, timeout)
@@ -223,6 +229,7 @@ def run_page_recon(result: dict, timeout: float) -> dict:
     out["login"] = _detect_login(body, urls)
     out["register"] = _detect_register(body, urls)
     out["admin"] = _detect_admin(body, urls)
+    out["js_credentials"] = _scan_js_credentials(urls, timeout)
 
     if DEBUG:
         log.debug(
