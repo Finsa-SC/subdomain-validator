@@ -90,26 +90,6 @@ class SubdomainScanner:
             log.error(f"Failed to get subdomain from API/Sources: {e}")
             return False
 
-    def _load_from_cache(self):
-        if not is_cached_valid(self.domain_root, self.config.fresh):
-            return False
-
-        all_cached = load_result_from_cache(self.domain_root)
-        if not all_cached:
-            if DEBUG:
-                log.debug("Cache file exists but empty, forcing fresh scan")
-            return False
-
-        log.info(f"Scanning started at: {datetime.now()} for {self.domain_root} (from cache)")
-        if DEBUG:
-            log.debug(f"Loading {len(all_cached)} results from cache")
-
-        for result in  all_cached.values():
-            self.callback(result)
-
-        log.info(f"Scanner session ended at: {datetime.now()} for {self.domain_root}")
-        return True
-
     def _setup_scanned_subs(self):
         if self.config.fresh:
             clear_cache(domain=self.domain_root)
