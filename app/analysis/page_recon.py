@@ -90,7 +90,7 @@ def _extract_url(body: str, base_url: str) -> list[dict]:
                 full_url = urljoin(base_url, raw)
                 parsed = urlparse(full_url)
 
-                if parsed.scheme not in ("http", "https")
+                if parsed.scheme not in ("http", "https"):
                     continue
 
                 path = parsed.path.lower()
@@ -127,3 +127,21 @@ def _categories_path(path: str) -> str:
                 return cat
     return "page"
 
+def _detect_login(body: str, urls: list[dict]) -> dict:
+    signals_found = []
+    matched_paths = []
+
+    for sig in LOGIN_SIGNALS:
+        if re.search(sig, body, re.IGNORECASE):
+            signals_found.append(sig)
+
+    for entry in urls:
+        path = entry.get("path", "").lower()
+        if entry.get("category") == "auth" or re.search(f'/login|/signin|/auth', path):
+            matched_paths.append(entry['url'])
+
+    return {
+        "detected": len(signals_found) > 0 or len(matched_paths) > 0,
+        "signal_count": len(signals_found),
+        "paths": list(set(matched_paths)),
+    }
