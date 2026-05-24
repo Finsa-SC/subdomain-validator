@@ -164,3 +164,21 @@ def _detect_register(body: str, urls: list[dict]) -> dict:
         "signal_count": len(signals_found),
         "paths": list(set(matched_paths)),
     }
+
+def _detect_admin(body: str, urls: list[dict]) -> dict:
+    signals_found = []
+    matched_paths = []
+
+    for sig in ADMIN_SIGNALS:
+        if re.search(sig, body, re.IGNORECASE):
+            signals_found.append(sig)
+
+    for entry in urls:
+        if entry.get("category") == "admin":
+            matched_paths.append(entry['url'])
+
+    return {
+        "detected": len(signals_found) > 0 or len(matched_paths) > 0,
+        "signal_count": len(signals_found),
+        "paths": list(set(matched_paths)),
+    }
