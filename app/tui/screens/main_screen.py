@@ -1,3 +1,4 @@
+import os
 from textual.screen import Screen
 from textual.widgets import Input
 from textual.containers import Container
@@ -24,6 +25,7 @@ class MainScreen(Screen):
         Binding("s", "screenshot", "Screenshot"),
         Binding("escape", "close_detail", "Close"),
         Binding("f1", "show_help", "Help"),
+        Binding("r", "refresh", "Refresh")
     ]
 
     def __init__(self, config, domain_or_file):
@@ -200,7 +202,34 @@ class MainScreen(Screen):
             self.notify(f"Not a live host", severity="warning")
 
     def action_refresh(self):
-        self.notify("Refresh not implemented yet", severity="warning")
+        import sys
+        from core import app_state
+
+        app_state.stop()
+        if hasattr(app_state, 'executor') and app_state.executor:
+            app_state.executor.shutdown(wait=False, cancel_futures=True)
+
+        current_filter = self.query_one("#filter-input", Input).value
+        args = sys.argv[:]
+
+        if current_filter:
+            if '-q' in args:
+                idx = args.index('-q')
+                args[idx + 1] = current_filter
+            elif '--query' in args:
+                idx = args.index('--query')
+                args[idx + 1] = current_filter
+            else:
+                args.extend(['-q', current_filter])
+        else:
+            for flag in ('-q', '--query'):
+                if flag in args:
+                    idx = args.index(flag)
+                    args.pop(idx)
+                    args.pop(idx)
+        if '--refresh' not in args:
+            args.append('--fresh')
+        os.execv(sys.executable, [sys.executable] + args)
 
     def action_show_help(self):
         from .help_screen import HelpScreen
