@@ -121,7 +121,6 @@ class FilterParser:
                 if target == 'false' and wildcard:
                     return False
 
-
         if 'honeypot:' in query:
             match = re.search(r'honeypot:([\w+,]+)', query)
             if match:
@@ -187,6 +186,52 @@ class FilterParser:
                     else:
                         pattern = target.replace(".", r"\.").replace("*", ".*")
                         if re.fullmatch(pattern, ip_str):
+                            matched = True
+                if not matched:
+                    return False
+
+        if 'has:' in query:
+            match = re.search(r'has:([\w,]+)', query)
+            if match:
+                targets = [x.strip() for x in match.group(1).split(",")]
+
+                page_recon_data = result.get('deep_scan', {}).get('page_recon', {}).get('data') or {}
+                login_detected = page_recon_data.get("login", {}).get("detected", False)
+                register_detected = page_recon_data.get("register", {}).get("detected", False)
+                admin_detected = page_recon_data.get("admin", {}).get("detected", False)
+                cred_found = page_recon_data.get("js_credentials", {}).get("total_found", 0) > 0
+                urls = page_recon_data.get("urls", [])
+                interesting = page_recon_data.get("interesting", [])
+
+                LOGIN_ALIASES = {"login", "signin", "auth", "logon"}
+                REGISTER_ALIASES = {"register", "signup", "regist", "registration", "createaccount"}
+                ADMIN_ALIASES = {"admin", "dashboard", "panel", "manage", "cp"}
+                CRED_ALIASES = {"credential", "credentials", "cred", "secret", "hardcode"}
+                URL_ALIASES = {"url", "urls", "link", "links"}
+                JS_ALIASES = {"js", "javascript", "script"}
+
+                matched = False
+                for target in targets:
+                    t = target.lower().replace("-", "").replace("_", "").strip()
+
+                    if t in LOGIN_ALIASES:
+                        if login_detected:
+                            matched = True
+                    elif t in REGISTER_ALIASES:
+                        if register_detected:
+                            matched = True
+                    elif t in ADMIN_ALIASES:
+                        if admin_detected:
+                            matched = True
+                    elif t in CRED_ALIASES:
+                        if cred_found:
+                            matched = True
+                    elif t in URL_ALIASES:
+                        if urls:
+                            matched = True
+                    elif t in JS_ALIASES:
+                        js_scanned = page_recon_data.get("js_credentials", {}).get("js_scanned", [])
+                        if js_scanned:
                             matched = True
                 if not matched:
                     return False
@@ -266,7 +311,7 @@ class FilterParser:
                                 if start <= int(port) <= end:
                                     matched = True
                                     break
-                        except Exception:
+                        except:
                             pass
                     else:
                         try:
