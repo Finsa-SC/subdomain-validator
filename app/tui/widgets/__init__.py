@@ -1,1 +1,1 @@
-from .detail_panel import format_redirect, normalize_status
+from .detail_panel import normalize_status

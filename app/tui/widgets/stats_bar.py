@@ -9,18 +9,18 @@ class StatsBar(Static):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.percentage = False
-        self.last_data = {"total": 0, "filtered": 0, "live": 0, "honeypots": 0, "wildcard": 0}
+        self.last_data = {"total": 0, "filtered": 0, "live": 0, "misconfigured": 0, "honeypots": 0, "wildcard": 0}
 
     def compose(self):
         with Horizontal():
             yield Button("%", id="btn-toggle-stats")
             yield Static("", id="stats-text")
 
-    def update_stats(self, total, filtered, live, honeypots, wildcard):
+    def update_stats(self, total, filtered, live, misconfigured, honeypots, wildcard):
         self.last_data = {
             "total": total, "filtered": filtered,
-            "live": live, "honeypots": honeypots,
-            "wildcard": wildcard
+            "live": live, "misconfigured": misconfigured,
+            "honeypots": honeypots, "wildcard": wildcard
         }
         self.call_after_refresh(self.render_content)
 
@@ -43,6 +43,9 @@ class StatsBar(Static):
         if data['honeypots']:
             text.append(" | ", style="dim")
             text.append(f"Honeypots: {data['honeypots']}{get_percentage(data['honeypots'])}", style="#ea5400")
+        if data['misconfigured']:
+            text.append(" | ", style="dim")
+            text.append(f"misconfigured: {data['misconfigured']}{get_percentage(data['misconfigured'])}", style="#ea5400")
         if data['wildcard']:
             text.append(" | ", style="dim")
             text.append(f"Wildcard: {data['wildcard']}{get_percentage(data['wildcard'])}", style="#b50ad8")

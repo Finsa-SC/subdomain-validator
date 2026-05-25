@@ -1,16 +1,15 @@
-from os import lstat
-
 from textual.widgets import Static
 from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 from rich.console import Group
 from rich.align import Align
-from urllib.parse import urlparse
 from .subdomain_table import normalize_status
 
 class DetailPanel(Static):
     def show_detail(self, result):
+        from utils import format_size, format_redirect
+
         if not result:
             self.update("")
             return
@@ -42,7 +41,7 @@ class DetailPanel(Static):
             latency = proto.get("latency")
             redir = proto.get("redir")
             status = proto.get("status")
-            size = proto.get("size")
+            size = format_size(proto.get("size"))
             tech = proto.get("tech", [])
             server = proto.get("server", "Unknown")
             title = proto.get("title", '-')
@@ -55,7 +54,7 @@ class DetailPanel(Static):
             detail_table.add_row("  Status:", str(status))
             detail_table.add_row("  Server:", server)
             detail_table.add_row("  Latency:", f"{latency}ms" if latency is not None else "N/A")
-            detail_table.add_row("  Size:", f"{size}B" if size is not None else "0")
+            detail_table.add_row("  Size:", size if size is not None else "0")
             detail_table.add_row("  Redirect to:", f"{redir}")
             detail_table.add_row("  Title:", title)
 
@@ -111,16 +110,3 @@ class DetailPanel(Static):
 
         self.update(panel)
 
-def format_redirect(url: str, current_subdomain: str = "") -> str:
-    if not url or url in ["-", None, "None", ""]:
-        return "-"
-    parsed = urlparse(url)
-
-    if current_subdomain and parsed.netloc == current_subdomain.lower():
-        return "[bold #9ECE6A]HTTPS Upgrade[/]"
-
-    if parsed.netloc:
-        return parsed.netloc
-    if parsed.path:
-        return parsed.path
-    return "-"

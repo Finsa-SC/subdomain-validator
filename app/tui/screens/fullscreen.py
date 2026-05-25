@@ -12,8 +12,7 @@ from rich.text import Text
 from rich.rule import Rule
 from tldextract import tldextract
 
-from utils import do_screenshot, parse_port, scan_port, get_logger, load_result_from_cache
-from ..widgets import format_redirect
+from utils import do_screenshot, parse_port, scan_port, get_logger, load_result_from_cache, format_redirect
 
 log = get_logger("fullscreen")
 
@@ -234,6 +233,28 @@ class FullscreenDetail(Screen):
                         )
                     sections.append(url_table)
 
+                # JS Credentials
+                js_cred = d.get("js_credentials", {})
+                if js_cred.get("total_found", 0) > 0:
+                    pr_table.add_row("", "")
+                    pr_table.add_row(
+                        "JS Credentials",
+                        f"[#F7768E]⚠ {js_cred['total_found']} found in {len(js_cred.get('js_scanned', []))} files[/]"
+                    )
+                    for finding in js_cred.get("findings", [])[:10]:
+                        pr_table.add_row(
+                            f"  [#F7768E]{finding['label']}[/]",
+                            f"[#FFD700]{finding['masked']}[/] [#565F89](line {finding['line_hint']} · {finding['source_url'].split('/')[-1]})[/]"
+                        )
+                else:
+                    scanned_count = len(js_cred.get("js_scanned", []))
+                    if scanned_count > 0:
+                        pr_table.add_row(
+                            "JS Credentials",
+                            f"[#565F89]Clean ({scanned_count} files scanned)[/]"
+                        )
+                    else:
+                        pr_table.add_row("JS Credentials", "[#565F89]No JS files found[/]")
             else:
                 sections.append(pr_table)
 
@@ -298,6 +319,8 @@ class FullscreenDetail(Screen):
         )
     @staticmethod
     def _protocol_comparison(data:dict) -> Table:
+        from utils import format_size
+
         http = data.get('http', {})
         https = data.get('https', {})
         redir = format_redirect(http.get('redir'), data.get('subdomain'))
@@ -321,7 +344,7 @@ class FullscreenDetail(Screen):
             table.add_row("Status", res_status)
             table.add_row("Server", (target_data.get("server") or "-")[:18])
             table.add_row("Latency", f"{target_data.get('latency')}ms" if target_data.get("latency") else "N/A")
-            table.add_row("Size", f"{target_data.get('size', 0):,} B")
+            table.add_row("Size", format_size(target_data.get('size', 0)))
             table.add_row("Title", (target_data.get("title") or "-")[:30])
             table.add_row("Tech", ", ".join(target_data.get("tech", [])[:4]) or "-")
             return table

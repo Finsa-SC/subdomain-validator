@@ -124,7 +124,8 @@ def _categories_path(path: str) -> str:
         "file": [r"/upload", r"/download", r"/file", r"\.php$", r"\.asp", r"\.jsp"],
         "sensitive": [r"\.env", r"\.git", r"\.sql", r"\.bak", r"/config", r"/backup", r"/debug"],
     }
-    for cat, pattern in categories:
+
+    for cat, pattern in categories.items():
         for p in pattern:
             if re.search(p, path):
                 return cat
@@ -207,6 +208,12 @@ def run_page_recon(result: dict, timeout: float) -> dict:
         "admin": {"detected": False, "paths": []},
         "body_fetched": False,
         "total_urls": 0,
+        "js_credentials": {
+            "js_scanned": [],
+            "js_skipped": [],
+            "findings": [],
+            "total_found": 0
+        },
     }
 
     body, base_url = _fetch_body(result, timeout)
@@ -222,6 +229,7 @@ def run_page_recon(result: dict, timeout: float) -> dict:
     out["login"] = _detect_login(body, urls)
     out["register"] = _detect_register(body, urls)
     out["admin"] = _detect_admin(body, urls)
+    out["js_credentials"] = _scan_js_credentials(urls, timeout)
 
     if DEBUG:
         log.debug(
@@ -232,4 +240,130 @@ def run_page_recon(result: dict, timeout: float) -> dict:
             f"admin={out['admin']['detected']}"
         )
 
+    return out
+
+# ─── JS Credential Scanner ────────────────────────────────────────────────────
+JS_SKIP_PATTERNS = [
+    # vendor/library — ga perlu di-scan
+    r'jquery', r'bootstrap', r'lodash', r'moment', r'axios',
+    r'react', r'vue', r'angular', r'webpack', r'chunk',
+    r'polyfill', r'modernizr', r'leaflet', r'chart\.js',
+    r'fontawesome', r'gtm', r'analytics', r'recaptcha',
+    r'cloudflare', r'cdn\.', r'cdnjs', r'unpkg\.com',
+    r'jsdelivr', r'googleapis', r'gstatic',
+]
+
+CREDENTIAL_PATTERNS = [
+    # API Keys
+    {"label": "Generic API Key",      "pattern": r'(?:api[_\-]?key|apikey)\s*[:=]\s*["\']([A-Za-z0-9_\-]{16,})["\']'},
+    {"label": "Generic Secret",       "pattern": r'(?:secret|secret[_\-]?key)\s*[:=]\s*["\']([A-Za-z0-9_\-]{16,})["\']'},
+    {"label": "Generic Token",        "pattern": r'(?:token|access[_\-]?token|auth[_\-]?token)\s*[:=]\s*["\']([A-Za-z0-9_\-\.]{20,})["\']'},
+    {"label": "Generic Password",     "pattern": r'(?:password|passwd|pwd)\s*[:=]\s*["\']([^"\']{6,})["\']'},
+
+    # Cloud
+    {"label": "AWS Access Key",       "pattern": r'AKIA[0-9A-Z]{16}'},
+    {"label": "AWS Secret Key",       "pattern": r'(?:aws[_\-]?secret|secret[_\-]?access[_\-]?key)\s*[:=]\s*["\']([A-Za-z0-9/+=]{40})["\']'},
+    {"label": "Google API Key",       "pattern": r'AIza[0-9A-Za-z\-_]{35}'},
+    {"label": "Firebase URL",         "pattern": r'https://[a-z0-9\-]+\.firebaseio\.com'},
+
+    # Auth
+    {"label": "JWT Token",            "pattern": r'eyJ[A-Za-z0-9_\-]{10,}\.[A-Za-z0-9_\-]{10,}\.[A-Za-z0-9_\-]{10,}'},
+    {"label": "Bearer Token",         "pattern": r'[Bb]earer\s+([A-Za-z0-9\-_\.]{20,})'},
+    {"label": "Basic Auth",           "pattern": r'[Bb]asic\s+([A-Za-z0-9+/]{20,}={0,2})'},
+
+    # Services
+    {"label": "Stripe Key",           "pattern": r'(?:pk|sk)_(?:live|test)_[0-9a-zA-Z]{24,}'},
+    {"label": "Twilio SID",           "pattern": r'AC[a-zA-Z0-9]{32}'},
+    {"label": "SendGrid Key",         "pattern": r'SG\.[A-Za-z0-9_\-]{22}\.[A-Za-z0-9_\-]{43}'},
+    {"label": "Mailgun Key",          "pattern": r'key-[0-9a-zA-Z]{32}'},
+    {"label": "Slack Token",          "pattern": r'xox[baprs]-[0-9A-Za-z\-]{10,}'},
+    {"label": "GitHub Token",         "pattern": r'gh[pousr]_[A-Za-z0-9]{36,}'},
+    {"label": "Private Key Header",   "pattern": r'-----BEGIN (?:RSA |EC )?PRIVATE KEY-----'},
+
+    # DB connection strings
+    {"label": "DB Connection String", "pattern": r'(?:mongodb|mysql|postgres|postgresql|redis|mssql)://[^\s"\'<>]+'},
+]
+
+def _is_important_js(url: str) -> bool:
+    url = url.lower()
+    for pattern in JS_SKIP_PATTERNS:
+        if re.search(pattern, url):
+            return False
+    return True
+
+def _fetch_js(url: str, timeout: float) -> str | None:
+    from core import send_request
+    try:
+        res = send_request(
+            url=url,
+            method="GET",
+            timeout=timeout,
+            allow_redirects=True
+        )
+        if res and res.status_code == 200 and res.content:
+            res.encoding = res.charset_encoding or "utf-8"
+            return res.text
+    except:
+        pass
+    return None
+
+def _scan_js_for_credentials(js_content: str, source_url: str) -> list[dict]:
+    findings = []
+    seen = set()
+
+    for cred in CREDENTIAL_PATTERNS:
+        for match in re.finditer(cred["pattern"], js_content, re.IGNORECASE):
+            value = match.group(1) if match.lastindex else match.group(0)
+            value = value.strip()
+
+            key = f"{cred['label']}: {value[:40]}"
+            if key in seen:
+                continue
+            seen.add(key)
+
+            masked = value[:6] + "..." + value[-4:] if len(value) > 12 else value[:4] + "..."
+
+            findings.append({
+                "label": cred['label'],
+                "masked": masked,
+                "source_url": source_url,
+                "line_hint": _get_line_hint(js_content, match.start())
+            })
+    return findings
+
+def _get_line_hint(content: str, pos: int) -> int:
+    return content[:pos].count("\n") + 1
+
+def _scan_js_credentials(urls: list[dict], timeout: float) -> dict:
+    out = {
+        "js_scanned": [],
+        "findings": [],
+        "total_found": 0
+    }
+
+    js_urls = [
+        u for u in urls
+        if u.get("internal") and u.get("url", "").split("?")[0].endswith(".js")
+    ]
+
+    for entry in js_urls:
+        url = entry.get('url', '')
+        if _is_important_js(url):
+            out['js_scanned'].append(url)
+
+    for js_url in out['js_scanned'][:10]:
+        content = _fetch_js(js_url, timeout)
+        if not content:
+            continue
+        hits = _scan_js_for_credentials(content, js_url)
+        out['findings'].extend(hits)
+
+    out['total_found'] = len(out['findings'])
+
+    if DEBUG:
+        log.debug(
+            f"js_credential: scanned={len(out['js_scanned'])}, "
+            f"skipped={len(out['js_skipped'])}, "
+            f"findings={out['total_found']}"
+        )
     return out

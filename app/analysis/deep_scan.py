@@ -49,6 +49,11 @@ def run_deep_scan(
         on_module_done: callable,
         timeout: float = 8.0
 ):
+    from core import app_state
+
+    if not app_state.is_running:
+        return
+
     if 'deep_scan' not in result:
         result['deep_scan'] = initial_state()
 

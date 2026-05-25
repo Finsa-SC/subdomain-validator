@@ -14,7 +14,7 @@ from utils.writer import is_cached_valid, get_scanned_from_cache, clear_cache
 from .validate import validate_subdomain
 from .request import send_subdomain_request
 from .state import app_state
-from utils import get_logger, save_result_to_cache, load_result_from_cache
+from utils import get_logger, save_result_to_cache, load_result_from_cache, get_cache_age_hour
 from datetime import datetime
 
 log = get_logger("Scanner")
@@ -30,16 +30,18 @@ class SubdomainScanner:
         self.scanned_subs = set()
 
     def __enter__(self):
-        log.info(f"Scanning started at: {datetime.now()} for {self.domain}")
+        log.info(f"Scanning started at: {datetime.now()} for {self.domain_root}")
     def __exit__(self, exc_type, exc_val, exc_tb):
-        log.info(f"Scanner session ended at: {datetime.now()} for {self.domain}")
+        log.info(f"Scanner session ended at: {datetime.now()} for {self.domain_root}")
         if exc_type is KeyboardInterrupt:
-            log.warning(f"Scan interupted by user for {self.domain}")
+            log.warning(f"Scan interupted by user for {self.domain_root}")
             app_state.stop()
+            log.info("Scan result has been save, You can continue in under 2 hours")
             return True
         if exc_type:
             log.error(f"Scanner error: {exc_val}")
             app_state.stop()
+            log.info("Scan result has been save, You can continue in under 2 hours")
             return True
 
     def _setup_file_iter(self):
@@ -89,26 +91,6 @@ class SubdomainScanner:
         except Exception as e:
             log.error(f"Failed to get subdomain from API/Sources: {e}")
             return False
-
-    def _load_from_cache(self):
-        if not is_cached_valid(self.domain_root, self.config.fresh):
-            return False
-
-        all_cached = load_result_from_cache(self.domain_root)
-        if not all_cached:
-            if DEBUG:
-                log.debug("Cache file exists but empty, forcing fresh scan")
-            return False
-
-        log.info(f"Scanning started at: {datetime.now()} for {self.domain_root} (from cache)")
-        if DEBUG:
-            log.debug(f"Loading {len(all_cached)} results from cache")
-
-        for result in  all_cached.values():
-            self.callback(result)
-
-        log.info(f"Scanner session ended at: {datetime.now()} for {self.domain_root}")
-        return True
 
     def _setup_scanned_subs(self):
         if self.config.fresh:
@@ -209,6 +191,19 @@ class SubdomainScanner:
                     time.sleep(self.config.delay)
         console.print()
 
+    def _preload_cache_to_tui(self):
+        all_cached = load_result_from_cache(self.domain_root)
+        if not all_cached:
+            return
+
+        age = get_cache_age_hour(self.domain_root)
+        if age is None or age > 2.0:
+            return
+
+        log.info(f"Preloading {len(all_cached)} cached result to UI")
+        for result in all_cached.values():
+            self.callback(result)
+
     def run(self):
         if self.config.domain_list and self.config.domain_list.strip():
             if not self._setup_file_iter():
@@ -218,16 +213,13 @@ class SubdomainScanner:
             if not self._setup_api_iter():
                 return
 
-        if self._load_from_cache():
-            return
+        if not self.config.fresh:
+            self._preload_cache_to_tui()
 
         self._setup_scanned_subs()
 
         with self:
-            try:
-                self._run_scan()
-            except KeyboardInterrupt:
-                log.warning("Scan interrupted - partial results saved to cache")
+            self._run_scan()
 
 def check_subdomain_tui(domain: str, callback):
     scanner = SubdomainScanner(domain, callback)
