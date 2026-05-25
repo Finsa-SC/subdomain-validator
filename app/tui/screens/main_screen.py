@@ -108,11 +108,16 @@ class MainScreen(Screen):
         self.update_stats()
 
     def update_stats(self):
+        misconfigured_codes = (526, 527, 530)
+
         status_bar = self.query_one("#stats-bar", StatsBar)
         status_bar.update_stats(
             total=len(self.results),
             filtered=len(self.filtered_results),
             live=sum(1 for r in self.results if r.get("is_live")),
+            misconfigured=(1 for r in self.results if
+                           r.get('http', {}).get('status') in misconfigured_codes or
+                           r.get('https', {}).get('status') in misconfigured_codes),
             honeypots=sum(1 for r in self.results if r.get("is_honeypot")),
             wildcard=sum(1 for r in self.results if r.get('wildcard'))
         )
