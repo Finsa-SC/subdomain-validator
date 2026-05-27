@@ -182,28 +182,29 @@ def validate_subdomain(sub, wildcard_baseline):
             if isinstance(status, int) and (status == 200 or status in redirects):
                 status_ok = True
                 break
+        data['is_live'] = status_ok
+
+        if config.deep_scan and any(isinstance(s, int) for s in (http_status, https_status)):
+            from analysis import run_deep_scan
+
+            try:
+                run_deep_scan(
+                    result=data,
+                    on_module_done=_dummy_callback,
+                    timeout=3.0
+                )
+            except Exception as e:
+                log.error(f"Failed to auto deep scan for {sub}: {e}")
 
         if status_ok:
             if config.screenshot:
                 from utils import take_screenshot, can_screenshot
-                
+
                 ok, reason = can_screenshot(data)
                 if ok:
                     success, path_or_err = take_screenshot(data)
                     if success:
                         data["screenshot"] = path_or_err
-
-            if config.deep_scan:
-                from analysis import run_deep_scan
-
-                try:
-                    run_deep_scan(
-                        result=data,
-                        on_module_done=_dummy_callback,
-                        timeout=3.0
-                    )
-                except Exception as e:
-                    log.error(f"Failed to auto deep scan for {sub}: {e}")
 
         return status_ok, ip_address, data
     except Exception as e:
