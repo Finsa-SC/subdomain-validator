@@ -135,11 +135,10 @@ def validate_subdomain(sub, wildcard_baseline):
                 baselines["https"]["title"] == https_title):
                 https_wildcard = True
         if (http_wildcard or https_wildcard) and config.no_wildcard:
-            data = {"subdomain": sub, "signing": "[W]", "status": "Filtered (Wildcard)"}
+            data = {"subdomain": sub, "status": "Filtered (Wildcard)"}
             return False, ip_address, data
 
         is_any_wildcard = http_wildcard or https_wildcard
-        signing = sign(http_status, https_status, is_any_wildcard)
 
         data = {
             "timestamp": timestamp,
@@ -169,7 +168,6 @@ def validate_subdomain(sub, wildcard_baseline):
                 "body_hash": s.get("body_hash"),
                 "header_keys": s.get("header_keys", []),
             },
-            "signing": signing,
             "wildcard": is_any_wildcard,
         }
 

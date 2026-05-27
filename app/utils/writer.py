@@ -128,7 +128,6 @@ def clean_item(item):
     for proto in ("http", "https"):
         if proto in item:
             item[proto] = {k: v for k, v in item[proto].items() if k in keep_fields}
-    item.pop("signing", None)
     item.pop("timestamp", None)
     item.pop("honeypot_findings", None)
     return item
