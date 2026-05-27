@@ -164,7 +164,7 @@ def _build_summary(found: list[dict]) -> dict[str, str]:
             summary[tech] = version
     return summary
 
-def detect_version(result: dict, timeout: float = 8.0, shared_body: str = None) -> dict:
+def detect_version(result: dict, timeout: float = 8.0, shared_body: str = None, base_url: str = None) -> dict:
     all_found = []
 
     #scan header

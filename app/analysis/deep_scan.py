@@ -84,7 +84,7 @@ def run_deep_scan(
         on_module_done(key, result['deep_scan'])
 
         try:
-            data = mod['fn'](result, timeout, shared_body_html)
+            data = mod['fn'](result, timeout, shared_body_html, base_url)
 
             result['deep_scan'][key].update({
                 "status": StatusAction.DONE,

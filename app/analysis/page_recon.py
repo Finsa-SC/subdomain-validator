@@ -56,25 +56,6 @@ INTERESTING_PATHS = [
     r'\.env', r'\.git', r'\.sql', r'\.bak',
 ]
 
-def _fetch_body(result: dict, timeout: float) -> str | None:
-    from core import send_request
-
-    subdomain = result.get("subdomain", "")
-    https_status = result.get("https", {}).get("status")
-
-    url = f"https://{subdomain}" if https_status in (200, 301, 302, 307, 308) else f"http://{subdomain}"
-    res = send_request(
-        url=url,
-        method="GET",
-        timeout=timeout,
-        allow_redirects=True
-    )
-
-    if res and res.status_code == 200 and res.content:
-        res.encoding = res.charset_encoding or "utf-8"
-        return res.text, url
-    return None, None
-
 def _extract_urls(body: str, base_url: str) -> list[dict]:
     from urllib.parse import urljoin, urlparse
 
@@ -199,7 +180,7 @@ def _filter_interesting(urls: list[dict]) -> list[dict]:
                 break
     return interesting
 
-def run_page_recon(result: dict, timeout: float) -> dict:
+def run_page_recon(result: dict, timeout: float= 3.0, shared_body: str = None, base_url: str = None) -> dict:
     out = {
         "urls": [],
         "interesting": [],
@@ -216,13 +197,12 @@ def run_page_recon(result: dict, timeout: float) -> dict:
         },
     }
 
-    body, base_url = _fetch_body(result, timeout)
-    if not body:
+    if not shared_body:
         return out
 
     out["body_fetched"] = True
 
-    urls = _extract_urls(body, base_url)
+    urls = _extract_urls(shared_body, base_url)
     out["urls"] = urls
     out["total_urls"] = len(urls)
     out["interesting"] = _filter_interesting(urls)
