@@ -11,18 +11,25 @@ class StatusAction(Enum):
     DONE = "done"
     ERROR = "error"
 
-def _run_favicon(result: dict, timeout: float, shared_body: str = None, base_url = None) -> dict:
+
+def _run_favicon(result: dict, *args) -> dict:
     from utils import fetch_favicon
-    return fetch_favicon(result, timeout, shared_body, base_url)
+    timeout = args[0] if len(args) > 0 else 5.0
+    shared_body = args[1] if len(args) > 1 else None
+    base_url = args[2] if len(args) > 2 else None
+    return fetch_favicon(result, timeout=timeout, shared_body=shared_body, base_url=base_url)
 
 def _run_tech_version(result: dict, *args) -> dict:
     from .tech_version import detect_version
     shared_body = args[1] if len(args) > 1 else None
     return detect_version(result, shared_body=shared_body)
 
-def _run_page_recon(result: dict, timeout: float, shared_body: str = None, base_url = None) -> dict:
+def _run_page_recon(result: dict, *args) -> dict:
     from .page_recon import run_page_recon
-    return run_page_recon(result, timeout, shared_body, base_url)
+    timeout = args[0] if len(args) > 0 else 8.0
+    shared_body = args[1] if len(args) > 1 else None
+    base_url = args[2] if len(args) > 2 else None
+    return run_page_recon(result, timeout=timeout, shared_body=shared_body, base_url=base_url)
 
 MODULES: dict[str, dict] = {
     "favicon": {
