@@ -1,4 +1,6 @@
 import re, os
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
 from dotenv import load_dotenv
 
 from utils import get_logger
@@ -331,13 +333,27 @@ def _scan_js_credentials(urls: list[dict], timeout: float) -> dict:
         url = entry.get('url', '')
         if _is_important_js(url):
             out['js_scanned'].append(url)
+        else:
+            out['js_skipped'].append(url)
 
-    for js_url in out['js_scanned'][:10]:
-        content = _fetch_js(js_url, timeout)
-        if not content:
-            continue
-        hits = _scan_js_for_credentials(content, js_url)
-        out['findings'].extend(hits)
+    target_to_scan = out['js_scanned'][:10]
+
+    if target_to_scan:
+        with ThreadPoolExecutor(max_workers=len(target_to_scan)) as executor:
+            future_to_url = {
+                executor.submit(_fetch_js, js_url, timeout)
+                for js_url in target_to_scan
+            }
+
+            for future in as_completed(future_to_url):
+                js_url = future_to_url[future]
+                try:
+                    content = future.result()
+                    if content:
+                        hits = _scan_js_for_credentials(content, js_url)
+                        out['findings'].extend(hits)
+                except Exception as e:
+                    log.error(f"Failed to fetch/scan JS {js_url}: {e}")
 
     out['total_found'] = len(out['findings'])
 
