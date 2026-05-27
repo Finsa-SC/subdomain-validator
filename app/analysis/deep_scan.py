@@ -13,15 +13,16 @@ class StatusAction(Enum):
 
 def _run_favicon(result: dict, timeout: float, shared_body: str = None, base_url = None) -> dict:
     from utils import fetch_favicon
-    return fetch_favicon(result, timeout)
+    return fetch_favicon(result, timeout, shared_body, base_url)
 
-def _run_tech_version(result: dict, timeout: float, shared_body: str = None) -> dict:
+def _run_tech_version(result: dict, *args) -> dict:
     from .tech_version import detect_version
-    return detect_version(result, timeout)
+    shared_body = args[1] if len(args) > 1 else None
+    return detect_version(result, shared_body=shared_body)
 
 def _run_page_recon(result: dict, timeout: float, shared_body: str = None, base_url = None) -> dict:
     from .page_recon import run_page_recon
-    return run_page_recon(result, timeout)
+    return run_page_recon(result, timeout, shared_body, base_url)
 
 MODULES: dict[str, dict] = {
     "favicon": {

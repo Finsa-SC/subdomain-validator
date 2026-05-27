@@ -89,7 +89,7 @@ def _find_favicon_in_html(html: str, base_url: str) -> str | None:
 def _mm3_hash(data: bytes) -> int:
     return mmh3.hash(base64.encodebytes(data))
 
-def fetch_favicon(result: dict, timeout: float = 5.0, base_url: str = None) -> dict:
+def fetch_favicon(result: dict, timeout: float = 5.0, shared_body: str = None, base_url: str = None) -> dict:
     subdomain = result.get("subdomain", "")
 
     if not base_url:
