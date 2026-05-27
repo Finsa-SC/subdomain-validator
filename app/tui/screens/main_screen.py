@@ -8,7 +8,7 @@ from ..widgets.detail_panel import DetailPanel
 from ..widgets.stats_bar import StatsBar
 from ..filter_parser import FilterParser
 import threading
-from utils import do_screenshot, get_logger
+from utils import do_screenshot, get_logger, format_subdomain
 
 log = get_logger('main_screen')
 
@@ -70,10 +70,9 @@ class MainScreen(Screen):
         def update_ui():
             subdomain = results.get("subdomain", "")
             if subdomain:
-                import tldextract
-                from utils import load_result_from_cache
+                from utils import load_result_from_cache, format_subdomain
 
-                root = tldextract.extract(subdomain)
+                root = format_subdomain(subdomain)
                 domain_root = f"{root.domain}{root.suffix}"
 
                 cached_data = load_result_from_cache(domain_root)

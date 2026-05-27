@@ -1,3 +1,6 @@
+from tldextract import ExtractResult
+
+
 def format_size(size_bytes: float) -> str:
     try:
         if size_bytes is None or size_bytes <= 0:
@@ -30,3 +33,8 @@ def format_redirect(url: str, current_subdomain: str = "") -> str:
     if parsed.path:
         return parsed.path
     return "-"
+
+def format_subdomain(subdomain: str) -> ExtractResult:
+    import tldextract
+    root = tldextract.extract(subdomain)
+    return root

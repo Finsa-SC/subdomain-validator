@@ -1,6 +1,6 @@
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from utils import get_logger, update_result_in_cache
+from utils import get_logger, update_result_in_cache, format_subdomain
 from enum import Enum
 
 log = get_logger("deep_scan")
@@ -66,8 +66,8 @@ def run_deep_scan(
         result['deep_scan'] = initial_state()
 
     subdomain = result.get("subdomain", "")
-    import tldextract
-    root = tldextract.extract(subdomain)
+
+    root = format_subdomain(subdomain)
     domain_root = f"{root.domain}{root.suffix}"
 
     https_status = result.get('https', {}).get('status')

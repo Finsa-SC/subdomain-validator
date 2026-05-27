@@ -1,7 +1,6 @@
 import time
 from pathlib import Path
 from typing import Any
-import tldextract
 import os
 from rich.console import Console
 
@@ -13,7 +12,7 @@ from utils.writer import get_scanned_from_cache, clear_cache
 from .validate import validate_subdomain
 from .request import send_subdomain_request
 from .state import app_state
-from utils import get_logger, save_result_to_cache, load_result_from_cache, get_cache_age_hour
+from utils import get_logger, save_result_to_cache, load_result_from_cache, get_cache_age_hour, format_subdomain
 from datetime import datetime
 
 log = get_logger("Scanner")
@@ -262,7 +261,7 @@ def check_wildcard(domain: str):
     return baselines
 
 def get_domain_root(full_domain: str):
-    root = tldextract.extract(full_domain)
+    root = format_subdomain(full_domain)
     return f"{root.domain}.{root.suffix}"
 
 def create_metadata(domain: str) -> dict[str, Any]:
