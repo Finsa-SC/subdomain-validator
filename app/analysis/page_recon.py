@@ -341,7 +341,7 @@ def _scan_js_credentials(urls: list[dict], timeout: float) -> dict:
     if target_to_scan:
         with ThreadPoolExecutor(max_workers=len(target_to_scan)) as executor:
             future_to_url = {
-                executor.submit(_fetch_js, js_url, timeout)
+                executor.submit(_fetch_js, js_url, timeout): js_url
                 for js_url in target_to_scan
             }
 
@@ -359,7 +359,7 @@ def _scan_js_credentials(urls: list[dict], timeout: float) -> dict:
 
     if DEBUG:
         log.debug(
-            f"js_credential: scanned={len(out['js_scanned'])}, "
+            f"js_credential: scanned={len(target_to_scan)}, "
             f"skipped={len(out['js_skipped'])}, "
             f"findings={out['total_found']}"
         )
