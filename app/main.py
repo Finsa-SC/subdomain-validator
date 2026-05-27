@@ -79,10 +79,10 @@ def main():
     filter_group.add_argument("-w", "--no-wildcard", action="store_true", help="Skip if wildcard DNS detected")
     filter_group.add_argument("--ip", type=str, help="Show IP address instead of subdomain")
     filter_group.add_argument("-q", "--query", type=str,  help="Filter query (e.g. 'status:200 server:nginx NOT honeypot:true')")
+    filter_group.add_argument("--honeypot", action="store_true", help="Enable smart fingerprinting")
 
     # 4. PROFILING & ANALYSIS
     profile_group = parser.add_argument_group('PROFILING & ANALYSIS')
-    profile_group.add_argument("--honeypot", action="store_true", help="Enable smart fingerprinting")
     profile_group.add_argument("--screenshot", action="store_true", help="Take screenshot to each subdomain with 200 status code")
     profile_group.add_argument("-X", "--deep-scan", action="store_true", help="Automaticaly run deep scan for each subdomain")
 

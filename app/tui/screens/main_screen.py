@@ -25,7 +25,6 @@ class MainScreen(Screen):
         Binding("s", "screenshot", "Screenshot"),
         Binding("escape", "close_detail", "Close"),
         Binding("f1", "show_help", "Help"),
-        Binding("r", "refresh", "Refresh")
     ]
 
     def __init__(self, config, domain_or_file):
@@ -212,23 +211,47 @@ class MainScreen(Screen):
         current_filter = self.query_one("#filter-input", Input).value
         args = sys.argv[:]
 
-        if current_filter:
-            if '-q' in args:
-                idx = args.index('-q')
-                args[idx + 1] = current_filter
-            elif '--query' in args:
-                idx = args.index('--query')
-                args[idx + 1] = current_filter
+        boolean_flags_to_purge = {
+            '-L', '--live',
+            '-A', '--available',
+            '-w', '--no-wildcard',
+            '--honeypot'    
+        }
+
+        value_flags_to_purge = {
+            '--ip',
+            '--port'
+        }
+
+        for i in range(len(args) - 1, -1, -1):
+            arg = args[i]
+
+            if arg in boolean_flags_to_purge:
+                args.pop(i)
             else:
-                args.extend(['-q', current_filter])
-        else:
-            for flag in ('-q', '--query'):
-                if flag in args:
-                    idx = args.index(flag)
+                for v_flag in value_flags_to_purge:
+                    if arg == v_flag:
+                        args.pop(i)
+                        if i < len(args):
+                            args.pop(i)
+                        break
+                    elif arg.startswith(f"{v_flag}="):
+                        args.pop(i)
+                        break
+
+        for flag in ('-q', '--query'):
+            if flag in args:
+                idx = args.index(flag)
+                args.pop(idx)
+                if idx < len(args):
                     args.pop(idx)
-                    args.pop(idx)
+
+        if current_filter.strip():
+            args.extend(['-q', current_filter.strip()])
+
         if '--refresh' not in args:
             args.append('--fresh')
+
         os.execv(sys.executable, [sys.executable] + args)
 
     def action_show_help(self):

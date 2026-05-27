@@ -21,10 +21,10 @@ class ScanConfig:
     available: bool = True
     live: bool = True
     ip_address: str = None
+    honeypot: bool = False
     query: str = None
 
     # --- Profiling --- #
-    honeypot: bool = False
     screenshot: bool = False
     deep_scan: bool = False
 
