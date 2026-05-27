@@ -115,10 +115,12 @@ def fetch_favicon(result: dict, timeout: float = 5.0, shared_body: str = None, b
 
         if shared_body:
             html_str = shared_body
+            if DEBUG: log.debug("Use shared body to read favicon")
         else:
             html_bytes, html_type = _fetch_content(base_url, timeout)
             if html_bytes and 'html' in (html_type or '').lower():
                 html_str = html_bytes.decode("utf-8", errors="ignore")
+                if DEBUG: log.debug("Fallback send reqeust to get body")
 
         if html_str:
             found_url = _find_favicon_in_html(html_str, base_url)
