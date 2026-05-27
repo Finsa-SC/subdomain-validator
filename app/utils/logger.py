@@ -36,4 +36,6 @@ def get_logger(name: str) -> logging.Logger:
         logger.addHandler(handler)
         logger.setLevel(logging.DEBUG)
 
+    logging.raiseExceptions = False
+
     return logger
