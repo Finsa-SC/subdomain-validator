@@ -16,8 +16,7 @@ columns = [
     { header = "Subdomain", key = "subdomain",               width = 40 },
     { header = "IP",        key = "ip_address",              width = 16 },
     { header = "Server",    key = "http.server",             width = 12 },
-    { header = "Status",    key = "http.status",             width = 6  },
-    { header = "Title",     key = "http.title",              width = 25 },
+    { header = "Status",    key = "http.status",             width = 10  },
 ]
 
 # Number of subdomains to buffer before triggering a UI render update.
