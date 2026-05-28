@@ -37,6 +37,7 @@ class MainScreen(Screen):
         self.detail_visible = False
         self.detail_fullscreen = False
         self._rendered_count = 0
+        self._live_scan_counter = 0
 
     def compose(self):
         initial_query = self.config.query if self.config.query else ""
