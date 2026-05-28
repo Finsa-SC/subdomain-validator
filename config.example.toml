@@ -1,5 +1,5 @@
 [general]
-debug = true
+debug = false
 
 [scan]
 timeout = 3.0
@@ -9,3 +9,8 @@ retry = 0
 
 [network]
 proxy_url = ""
+
+[tui]
+# Number of subdomains to buffer before triggering a UI render update.
+# Higher values save CPU; lower values provide real-time updates.
+batch_size = 5

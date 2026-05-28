@@ -80,5 +80,9 @@ DELAY: float = float(_scan_section.get("delay", 0.0))
 RETRIES: int = int(_scan_section.get("retries", 0))
 
 # Network
-_networ_sectionk = _config_data.get('network', {})
-PROXY_URL: str = str(_networ_sectionk.get("proxy_url", ""))
+_networ_section = _config_data.get('network', {})
+PROXY_URL: str = str(_networ_section.get("proxy_url", ""))
+
+# tui
+_tui_section = _config_data.get('tui', {})
+BATCH_SIZE: int = int(_tui_section.get('batch_size', 5))

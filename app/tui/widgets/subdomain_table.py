@@ -1,5 +1,6 @@
 from textual.widgets import DataTable
 from rich.text import Text
+from models import BATCH_SIZE
 
 class SubdomainTable(DataTable):
     def __init__(self, *args, **kwargs):
@@ -38,22 +39,9 @@ class SubdomainTable(DataTable):
 
         self._restore_cursor(saved_subdomain)
 
-        # current_row = self.cursor_row
-        # self.clear()
-        # self.result_mapping = list(results)
-        #
-        # row_to_add = []
-        # for r in results:
-        #
-        # for row in row_to_add:
-        #     self.add_row(*row)
-        #
-        # if current_row is not None and current_row < len(self.result_mapping):
-        #     self.move_cursor(row=current_row)
-
     def append_scan_result(self, result):
         self._pending_rows.append(result)
-        if len(self._pending_rows) >= 5:
+        if len(self._pending_rows) >= BATCH_SIZE:
             self._flush_pending()
 
     def flush_all_pending(self):
