@@ -5,7 +5,7 @@ class SubdomainTable(DataTable):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.result_mapping = []
-        self._updating = False
+        self._is_scanning = False
 
     def on_mount(self):
         self.cursor_type = "row"
@@ -16,39 +16,86 @@ class SubdomainTable(DataTable):
         self.add_column("IP", width=16)
         self.add_column("Server", width=12)
         self.add_column("Status", width=10)
+        self._pending_rows = []
+
+    def start_scan_mode(self):
+        self._is_scanning = True
+        self._pending_rows = []
+
+    def stop_scan_mode(self):
+        self._is_scanning = False
+        self._flush_pending()
 
     def update_data(self, results):
-        current_row = self.cursor_row
-        self.clear()
-        self.result_mapping = list(results)
+        saved_subdomain = self._get_cursor_subdomain()
 
-        row_to_add = []
-        for r in results:
-            icon = self.get_status_icon(r)
-            subdomain = self.truncate(r.get("subdomain", ""), 38)
-            ip = r.get("ip_address", "No IP")
-            server = self.truncate(r.get("server", "Unknown"), 10)
-            h_status = normalize_status(r.get("http", {}).get("status"))
-            s_status = normalize_status(r.get("https", {}).get("status"))
-            status = f"{h_status}/{s_status}"
-            row_to_add.append((icon, subdomain, ip, server, status))
+        with self.prevent(DataTable.RowHighlighted):
+            self.clear()
+            self.result_mapping = list(results)
 
-        for row in row_to_add:
-            self.add_row(*row)
+            for result in results:
+                self.add_row(*self._build_row(result))
 
-        if current_row is not None and current_row < len(self.result_mapping):
-            self.move_cursor(row=current_row)
+        self._restore_cursor(saved_subdomain)
 
-    def append_row(self, r):
-        self.result_mapping.append(r)
-        icon = self.get_status_icon(r)
-        subdomain = self.truncate(r.get("subdomain", ""), 38)
-        ip = r.get("ip_address", "No IP")
-        server = self.truncate(r.get("server", "Unknown"), 10)
-        h_status = normalize_status(r.get("http", {}).get("status"))
-        s_status = normalize_status(r.get("https", {}).get("status"))
+        # current_row = self.cursor_row
+        # self.clear()
+        # self.result_mapping = list(results)
+        #
+        # row_to_add = []
+        # for r in results:
+        #
+        # for row in row_to_add:
+        #     self.add_row(*row)
+        #
+        # if current_row is not None and current_row < len(self.result_mapping):
+        #     self.move_cursor(row=current_row)
 
-        self.add_row(icon, subdomain, ip, server, f"{h_status}/{s_status}")
+    def append_scan_result(self, result):
+        self._pending_rows.append(result)
+        if len(self._pending_rows) >= 5:
+            self._flush_pending()
+
+    def flush_all_pending(self):
+        self._flush_pending()
+
+    def _flush_pending(self):
+        if not self._pending_rows:
+            return
+
+        rows = self._pending_rows
+        self._pending_rows = []
+
+        with self.prevent(DataTable.RowHighlighted):
+            for result in rows:
+                self.result_mapping.append(result)
+                self.add_row(*self._build_row(result))
+
+    def _build_row(self, result) -> tuple:
+        icon = self.get_status_icon(result)
+        subdomain = self.truncate(result.get("subdomain", ""), 38)
+        ip = result.get("ip_address", "No IP")
+        server = self.truncate(result.get("server", "Unknown"), 10)
+        h_status = normalize_status(result.get("http", {}).get("status"))
+        s_status = normalize_status(result.get("https", {}).get("status"))
+        return icon, subdomain, ip, server, f"{h_status}/{s_status}"
+
+    def _get_cursor_subdomain(self) -> str | None:
+        if self.cursor_row is not None and self.cursor_row < len(self.result_mapping):
+            return self.result_mapping[self.cursor_row].get('subdomain')
+        return None
+
+    def _restore_cursor(self, subdomain: str | None):
+        if subdomain is None:
+            return
+
+        for i, r in enumerate(self.result_mapping):
+            if r.get('subdomain') == subdomain:
+                self.move_cursor(row=i, animate=False)
+                return
+
+    def append_row(self, result):
+        self.append_scan_result(result)
 
     @staticmethod
     def get_status_icon(result):
