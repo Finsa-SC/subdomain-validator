@@ -83,6 +83,15 @@ RETRIES: int = int(_scan_section.get("retries", 0))
 _networ_section = _config_data.get('network', {})
 PROXY_URL: str = str(_networ_section.get("proxy_url", ""))
 
-# tui
-_tui_section = _config_data.get('tui', {})
-BATCH_SIZE: int = int(_tui_section.get('batch_size', 5))
+# Display
+_display_section = _config_data.get('display', {})
+DEFAULT_COLUMNS = [
+    {"header": "St",        "key": "icon",        "width": 4},
+    {"header": "Subdomain", "key": "subdomain",   "width": 40},
+    {"header": "IP",        "key": "ip_address",  "width": 16},
+    {"header": "Server",    "key": "http.server", "width": 12},
+    {"header": "Status",    "key": "http.status", "width": 10},
+]
+
+DISPLAY_COLUMNS: list[dict] = _display_section.get("columns", DEFAULT_COLUMNS)
+BATCH_SIZE: int = int(_display_section.get('batch_size', 5))
