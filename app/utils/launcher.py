@@ -2,14 +2,10 @@ import subprocess, platform, os, shutil
 import tempfile
 from pathlib import Path
 
-from dotenv import load_dotenv
-from jinja2.lexer import integer_re
-
+from models import DEBUG
 from .logger import get_logger
 
 log = get_logger("Launcher")
-load_dotenv()
-DEBUG = os.getenv("DEBUG", '').lower().strip() == 'true'
 
 nmap = "NMAP"
 ffuf = "FFUF"

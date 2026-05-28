@@ -1,11 +1,8 @@
-from dotenv import load_dotenv
-
 from utils import get_logger
-import re, os
+from models import DEBUG
+import re
 
 log = get_logger("tech_version")
-load_dotenv()
-DEBUG = os.getenv("DEBUG", "false") == "true"
 
 HEADER_PATTERNS = [
     # Server header

@@ -70,15 +70,15 @@ _config_data = _load_raw_toml()
 
 # General
 _general_section = _config_data.get('general', {})
-DEBUG: bool = _general_section.get("DEBUG", False)
+DEBUG: bool = _general_section.get("debug", False)
 
 # Scan
 _scan_section = _config_data.get('scan', {})
-TIMEOUT: float = float(_scan_section.get("TIMEOUT", 3.0))
-THREAD: int = int(_scan_section.get("THREAD", 5))
-DELAY: float = float(_scan_section.get("DELAY", 0.0))
-RETRIES: int = int(_scan_section.get("RETRIES", 0))
+TIMEOUT: float = float(_scan_section.get("timeout", 3.0))
+THREAD: int = int(_scan_section.get("thread", 5))
+DELAY: float = float(_scan_section.get("delay", 0.0))
+RETRIES: int = int(_scan_section.get("retries", 0))
 
 # Network
-_networ_section = _config_data.get('network', {})
-PROXY_URL: str = str(_networ_section.get("PROXY_URL", ""))
+_networ_sectionk = _config_data.get('network', {})
+PROXY_URL: str = str(_networ_sectionk.get("proxy_url", ""))

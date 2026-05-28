@@ -1,13 +1,10 @@
-import re, os
+import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from dotenv import load_dotenv
-
 from utils import get_logger
+from models import DEBUG
 
-load_dotenv()
 log = get_logger("Page Recon")
-DEBUG = os.getenv("DEBUG", "false") == "true"
 
 URL_PATTERNS = [
     r'href=["\']([^"\'#][^"\']*)["\']',

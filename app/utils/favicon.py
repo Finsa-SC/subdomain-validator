@@ -1,12 +1,10 @@
 from urllib.parse import urlparse, urljoin
-import mmh3, hashlib, base64, re, os
-from dotenv import load_dotenv
+import mmh3, hashlib, base64, re
+from models import DEBUG
 
 from .logger import get_logger
 
 log = get_logger("favicon")
-load_dotenv()
-DEBUG = os.getenv("DEBUG", "false") == "true"
 
 KNOWN_FAVICON_HASHES: dict[int, str] = {
     # CMS
