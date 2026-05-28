@@ -1,4 +1,5 @@
 import os
+
 from textual.screen import Screen
 from textual.widgets import Input
 from textual.containers import Container
@@ -78,6 +79,8 @@ class MainScreen(Screen):
 
     def on_subdomain_found(self, results, batch: bool = False):
         def update_ui():
+            table = self.query_one("#subdomain-table", SubdomainTable)
+
             if batch:
                 self.results.extend(results)
                 self.apply_filter()
@@ -102,11 +105,19 @@ class MainScreen(Screen):
             self.results.append(results)
             self._live_scan_counter += 1
 
-            if self._live_scan_counter % 5 == 0:
-                self.apply_filter()
-                self.update_stats()
+            filter_input = self.query_one("#filter-input", Input)
+            has_filter = bool(filter_input.value.strip())
+
+            if has_filter:
+                if self.parser.matches(filter_input.value, results):
+                    self.filtered_results.append(results)
+                    table.append_scan_result(results)
             else:
-                self.update_stats()
+                self.filtered_results.append(results)
+                table.append_scan_result(results)
+
+            self.update_stats()
+
         self.app.call_from_thread(update_ui)
 
     def on_input_submitted(self, event: Input.Submitted):
