@@ -1,7 +1,7 @@
 import time, os, re, urllib3, html
-from dotenv import load_dotenv
+
 from .stealth import StealthMode
-from models import DNS_PROVIDERS, get_config
+from models import DNS_PROVIDERS, get_config, DEBUG, PROXY_URL
 from utils import get_logger
 from curl_cffi import requests
 import dns.resolver
@@ -11,15 +11,9 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 stealth = StealthMode()
 log = get_logger("request")
-load_dotenv()
-
-PROXY_URL = os.getenv("PROXY_URL", "").strip().lower()
 
 if not PROXY_URL or PROXY_URL == 'none':
     PROXY_URL = None
-
-debug_mode = os.getenv('DEBUG', '').lower().strip()
-DEBUG = debug_mode == 'true'
 
 def _do_request(
     url: str,

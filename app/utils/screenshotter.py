@@ -2,7 +2,7 @@ from pathlib import Path
 import threading
 import sys
 import platform, os, subprocess, random
-from dotenv import load_dotenv
+from models import PROXY_URL
 
 from .logger import get_logger
 
@@ -90,9 +90,8 @@ def open_image_popup(path: str):
 
 def ensure_chromium():
     from playwright.sync_api import sync_playwright
-    load_dotenv()
-    raw_proxy = os.getenv('PROXY_URL', '').strip()
     proxy_url = None
+    raw_proxy = PROXY_URL
     if raw_proxy and raw_proxy.lower() != 'none':
         proxy_url = raw_proxy
     try:

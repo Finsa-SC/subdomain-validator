@@ -1,0 +1,11 @@
+[general]
+debug = true
+
+[scan]
+timeout = 3.0
+thread = 5
+delay = 0.0
+retry = 0
+
+[network]
+proxy_url = ""

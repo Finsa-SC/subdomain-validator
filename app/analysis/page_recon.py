@@ -1,11 +1,10 @@
-import re, os
-from dotenv import load_dotenv
+import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from utils import get_logger
+from models import DEBUG
 
-load_dotenv()
 log = get_logger("Page Recon")
-DEBUG = os.getenv("DEBUG", "false") == "true"
 
 URL_PATTERNS = [
     r'href=["\']([^"\'#][^"\']*)["\']',
@@ -55,25 +54,6 @@ INTERESTING_PATHS = [
     r'\.php', r'\.asp', r'\.aspx', r'\.jsp',
     r'\.env', r'\.git', r'\.sql', r'\.bak',
 ]
-
-def _fetch_body(result: dict, timeout: float) -> str | None:
-    from core import send_request
-
-    subdomain = result.get("subdomain", "")
-    https_status = result.get("https", {}).get("status")
-
-    url = f"https://{subdomain}" if https_status in (200, 301, 302, 307, 308) else f"http://{subdomain}"
-    res = send_request(
-        url=url,
-        method="GET",
-        timeout=timeout,
-        allow_redirects=True
-    )
-
-    if res and res.status_code == 200 and res.content:
-        res.encoding = res.charset_encoding or "utf-8"
-        return res.text, url
-    return None, None
 
 def _extract_urls(body: str, base_url: str) -> list[dict]:
     from urllib.parse import urljoin, urlparse
@@ -199,7 +179,7 @@ def _filter_interesting(urls: list[dict]) -> list[dict]:
                 break
     return interesting
 
-def run_page_recon(result: dict, timeout: float) -> dict:
+def run_page_recon(result: dict, timeout: float= 3.0, shared_body: str = None, base_url: str = None) -> dict:
     out = {
         "urls": [],
         "interesting": [],
@@ -216,19 +196,18 @@ def run_page_recon(result: dict, timeout: float) -> dict:
         },
     }
 
-    body, base_url = _fetch_body(result, timeout)
-    if not body:
+    if not shared_body:
         return out
 
     out["body_fetched"] = True
 
-    urls = _extract_urls(body, base_url)
+    urls = _extract_urls(shared_body, base_url)
     out["urls"] = urls
     out["total_urls"] = len(urls)
     out["interesting"] = _filter_interesting(urls)
-    out["login"] = _detect_login(body, urls)
-    out["register"] = _detect_register(body, urls)
-    out["admin"] = _detect_admin(body, urls)
+    out["login"] = _detect_login(shared_body, urls)
+    out["register"] = _detect_register(shared_body, urls)
+    out["admin"] = _detect_admin(shared_body, urls)
     out["js_credentials"] = _scan_js_credentials(urls, timeout)
 
     if DEBUG:
@@ -337,6 +316,7 @@ def _get_line_hint(content: str, pos: int) -> int:
 def _scan_js_credentials(urls: list[dict], timeout: float) -> dict:
     out = {
         "js_scanned": [],
+        "js_skipped": [],
         "findings": [],
         "total_found": 0
     }
@@ -350,19 +330,33 @@ def _scan_js_credentials(urls: list[dict], timeout: float) -> dict:
         url = entry.get('url', '')
         if _is_important_js(url):
             out['js_scanned'].append(url)
+        else:
+            out['js_skipped'].append(url)
 
-    for js_url in out['js_scanned'][:10]:
-        content = _fetch_js(js_url, timeout)
-        if not content:
-            continue
-        hits = _scan_js_for_credentials(content, js_url)
-        out['findings'].extend(hits)
+    target_to_scan = out['js_scanned'][:10]
+
+    if target_to_scan:
+        with ThreadPoolExecutor(max_workers=len(target_to_scan)) as executor:
+            future_to_url = {
+                executor.submit(_fetch_js, js_url, timeout): js_url
+                for js_url in target_to_scan
+            }
+
+            for future in as_completed(future_to_url):
+                js_url = future_to_url[future]
+                try:
+                    content = future.result()
+                    if content:
+                        hits = _scan_js_for_credentials(content, js_url)
+                        out['findings'].extend(hits)
+                except Exception as e:
+                    log.error(f"Failed to fetch/scan JS {js_url}: {e}")
 
     out['total_found'] = len(out['findings'])
 
     if DEBUG:
         log.debug(
-            f"js_credential: scanned={len(out['js_scanned'])}, "
+            f"js_credential: scanned={len(target_to_scan)}, "
             f"skipped={len(out['js_skipped'])}, "
             f"findings={out['total_found']}"
         )

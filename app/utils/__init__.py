@@ -7,4 +7,4 @@ from .screenshotter import take_screenshot, can_screenshot, do_screenshot
 from .port_scanner import parse_port, scan_port
 from .favicon import fetch_favicon
 from .launcher import COMMAND_TEMPLATES, launch_terminal, launch_terminal_multi
-from .formatter import format_size, format_redirect
+from .formatter import format_size, format_redirect, format_subdomain

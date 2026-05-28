@@ -1,7 +1,6 @@
 import time
 from pathlib import Path
 from typing import Any
-import tldextract
 import os
 from rich.console import Console
 
@@ -13,7 +12,7 @@ from utils.writer import get_scanned_from_cache, clear_cache
 from .validate import validate_subdomain
 from .request import send_subdomain_request
 from .state import app_state
-from utils import get_logger, save_result_to_cache, load_result_from_cache, get_cache_age_hour
+from utils import get_logger, save_result_to_cache, load_result_from_cache, get_cache_age_hour, format_subdomain
 from datetime import datetime
 
 log = get_logger("Scanner")
@@ -36,7 +35,7 @@ class SubdomainScanner:
     def __exit__(self, exc_type, exc_val, exc_tb):
         log.info(f"Scanner session ended at: {datetime.now()} for {self.domain_root}")
         self.count_time.end()
-        log.info(f"Scanned in {self.count_time.total}")
+        log.info(f"Scanned in {self.count_time.total} seconds")
 
         if exc_type is KeyboardInterrupt:
             log.warning(f"Scan interupted by user for {self.domain_root}")
@@ -206,8 +205,7 @@ class SubdomainScanner:
             return
 
         log.info(f"Preloading {len(all_cached)} cached result to UI")
-        for result in all_cached.values():
-            self.callback(result)
+        self.callback(list(all_cached.values()), batch=True)
 
     def run(self):
         if self.config.domain_list and self.config.domain_list.strip():
@@ -262,7 +260,7 @@ def check_wildcard(domain: str):
     return baselines
 
 def get_domain_root(full_domain: str):
-    root = tldextract.extract(full_domain)
+    root = format_subdomain(full_domain)
     return f"{root.domain}.{root.suffix}"
 
 def create_metadata(domain: str) -> dict[str, Any]:

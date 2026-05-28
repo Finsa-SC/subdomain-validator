@@ -1,7 +1,5 @@
-import tldextract
-
 from sources import hackertarget, crtsh, alienvault, rapiddns
-from utils import load_result_from_cache, get_logger
+from utils import load_result_from_cache, get_logger, format_subdomain
 
 log = get_logger("Source Handler")
 
@@ -21,7 +19,7 @@ def get_subdomain(domain: str, use_all: bool = False, selected_source: str = Non
 
     cached_subdomains = set()
     if not fresh:
-        root = tldextract.extract(domain)
+        root = format_subdomain(subdomain=domain)
         domain_root = f"{root.domain}.{root.suffix}"
         cached_data = load_result_from_cache(domain_root)
         cached_subdomains = set(cached_data.keys())

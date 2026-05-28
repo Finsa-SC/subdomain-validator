@@ -1,4 +1,5 @@
 import os
+
 from textual.screen import Screen
 from textual.widgets import Input
 from textual.containers import Container
@@ -8,7 +9,7 @@ from ..widgets.detail_panel import DetailPanel
 from ..widgets.stats_bar import StatsBar
 from ..filter_parser import FilterParser
 import threading
-from utils import do_screenshot, get_logger
+from utils import do_screenshot, get_logger, format_subdomain
 
 log = get_logger('main_screen')
 
@@ -37,6 +38,7 @@ class MainScreen(Screen):
         self.detail_visible = False
         self.detail_fullscreen = False
         self._rendered_count = 0
+        self._live_scan_counter = 0
 
     def compose(self):
         initial_query = self.config.query if self.config.query else ""
@@ -57,23 +59,39 @@ class MainScreen(Screen):
     def start_scan(self):
         from core import check_subdomain_tui
 
+        table = self.query_one("#subdomain-table", SubdomainTable)
+        table.start_scan_mode()
+
         def scan_worker():
             check_subdomain_tui(
                 self.domain_or_file,
                 callback=self.on_subdomain_found
             )
+            def finish():
+                t = self.query_one("#subdomain-table", SubdomainTable)
+                t.start_scan_mode()
+                self.apply_filter()
+                self.update_stats()
+            self.app.call_from_thread(finish)
 
         thread = threading.Thread(target=scan_worker, daemon=True)
         thread.start()
 
-    def on_subdomain_found(self, results):
+    def on_subdomain_found(self, results, batch: bool = False):
         def update_ui():
+            table = self.query_one("#subdomain-table", SubdomainTable)
+
+            if batch:
+                self.results.extend(results)
+                self.apply_filter()
+                self.update_stats()
+                return
+
             subdomain = results.get("subdomain", "")
             if subdomain:
-                import tldextract
-                from utils import load_result_from_cache
+                from utils import load_result_from_cache, format_subdomain
 
-                root = tldextract.extract(subdomain)
+                root = format_subdomain(subdomain)
                 domain_root = f"{root.domain}{root.suffix}"
 
                 cached_data = load_result_from_cache(domain_root)
@@ -85,8 +103,21 @@ class MainScreen(Screen):
                     })
 
             self.results.append(results)
-            self.apply_filter()
+            self._live_scan_counter += 1
+
+            filter_input = self.query_one("#filter-input", Input)
+            has_filter = bool(filter_input.value.strip())
+
+            if has_filter:
+                if self.parser.matches(filter_input.value, results):
+                    self.filtered_results.append(results)
+                    table.append_scan_result(results)
+            else:
+                self.filtered_results.append(results)
+                table.append_scan_result(results)
+
             self.update_stats()
+
         self.app.call_from_thread(update_ui)
 
     def on_input_submitted(self, event: Input.Submitted):

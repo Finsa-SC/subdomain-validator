@@ -1,12 +1,9 @@
 import hashlib, ipaddress, time, subprocess, platform, shutil, json, threading, os
 from pathlib import Path
-from dotenv import load_dotenv
 
-from models import PROXY_IPS
+from models import PROXY_IPS, DEBUG
 from .logger import get_logger
 
-load_dotenv()
-DEBUG = os.getenv("debug", "false") == 'true'
 log = get_logger("writer")
 def check_results_dir():
     Path("results").mkdir(parents=True, exist_ok=True)

@@ -1,12 +1,10 @@
 from urllib.parse import urlparse, urljoin
-import mmh3, hashlib, base64, re, os
-from dotenv import load_dotenv
+import mmh3, hashlib, base64, re
+from models import DEBUG
 
 from .logger import get_logger
 
 log = get_logger("favicon")
-load_dotenv()
-DEBUG = os.getenv("DEBUG", "false") == "true"
 
 KNOWN_FAVICON_HASHES: dict[int, str] = {
     # CMS
@@ -89,9 +87,11 @@ def _find_favicon_in_html(html: str, base_url: str) -> str | None:
 def _mm3_hash(data: bytes) -> int:
     return mmh3.hash(base64.encodebytes(data))
 
-def fetch_favicon(result: dict, timeout: float = 5.0) -> dict:
+def fetch_favicon(result: dict, timeout: float = 5.0, shared_body: str = None, base_url: str = None) -> dict:
     subdomain = result.get("subdomain", "")
-    base_url = _pick_base_url(result)
+
+    if not base_url:
+        base_url = _pick_base_url(result)
 
     out = {
         "found": False, "url": None,
@@ -108,22 +108,26 @@ def fetch_favicon(result: dict, timeout: float = 5.0) -> dict:
     if is_invalid:
         if DEBUG:
             log.debug(f"{subdomain}: /favicon.ico Empty, trying parse HTML...")
-        html_bytes, html_type = _fetch_content(base_url, timeout)
 
-        if not html_bytes:
-            return out
+        html_str = None
 
-        if not html_bytes or "html" not in (html_type or "").lower():
-            return out
+        if shared_body:
+            html_str = shared_body
+            if DEBUG: log.debug("Use shared body to read favicon")
+        else:
+            html_bytes, html_type = _fetch_content(base_url, timeout)
+            if html_bytes and 'html' in (html_type or '').lower():
+                html_str = html_bytes.decode("utf-8", errors="ignore")
+                if DEBUG: log.debug("Fallback send reqeust to get body")
 
-        html_str = html_bytes.decode("utf-8", errors="ignore")
-        found_url = _find_favicon_in_html(html_str, base_url)
-        if found_url:
-            data, _ = _fetch_content(found_url, timeout)
-            if data and (len(data) < 100 or data[:4] == b"<html"):
-                data = None
-            if data:
-                favicon_url = found_url
+        if html_str:
+            found_url = _find_favicon_in_html(html_str, base_url)
+            if found_url:
+                data, _ = _fetch_content(found_url, timeout)
+                if data and (len(data) < 100 or data[:4] == b"<html"):
+                    data = None
+                if data:
+                    favicon_url = found_url
 
     if not data:
         out["error"] = "Favicon not found (tried /favicon.ico and HTML parse)"

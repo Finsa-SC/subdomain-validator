@@ -1,11 +1,8 @@
-from dotenv import load_dotenv
-
 from utils import get_logger
-import re, os
+from models import DEBUG
+import re
 
 log = get_logger("tech_version")
-load_dotenv()
-DEBUG = os.getenv("DEBUG", "false") == "true"
 
 HEADER_PATTERNS = [
     # Server header
@@ -133,25 +130,6 @@ def _scan_headers(headers: dict) -> list[dict]:
         })
     return results
 
-def _fetch_body(result: dict, timeout: float = 8.0) -> str | None:
-    from core import send_request
-
-    subdomain = result.get("subdomain", "")
-    https_result = result.get("https", {}).get("status")
-    url = f"https://{subdomain}" if https_result in (200, 301, 302, 307, 308) else f"http://{subdomain}"
-
-    res = send_request(
-        url=url,
-        method="GET",
-        timeout=timeout,
-        allow_redirects=True,
-    )
-    
-    if res and res.status_code == 200 and res.content:
-        res.encoding = res.charset_encoding or "utf-8"
-        return res.text
-    return None
-
 def _scan_body(body: str) -> list[dict[str, str]]:
     results = []
     if not body:
@@ -183,7 +161,7 @@ def _build_summary(found: list[dict]) -> dict[str, str]:
             summary[tech] = version
     return summary
 
-def detect_version(result: dict, timeout: float = 8.0) -> dict:
+def detect_version(result: dict, shared_body: str = None) -> dict:
     all_found = []
 
     #scan header
@@ -194,8 +172,7 @@ def detect_version(result: dict, timeout: float = 8.0) -> dict:
             all_found.append({**hit, "proto": proto.upper()})
 
     #fetch body
-    body = _fetch_body(result, timeout)
-    body_hits = _scan_body(body) if body else []
+    body_hits = _scan_body(shared_body) if shared_body else []
     for hit in body_hits:
         all_found.append({**hit, "proto": "BODY"})
 
@@ -222,15 +199,16 @@ def detect_version(result: dict, timeout: float = 8.0) -> dict:
         else:
             tech_list.append(tech)
 
-        if proto in ['http', 'https']:
-            existing_tech = result[proto].get("tech") or []
-            combined = list(set(existing_tech + tech_list))
-            result[proto]['tech'] = sorted(combined)
+        for proto in ['http', 'https']:
+            if proto in result:
+                existing_tech = result[proto].get("tech") or []
+                combined = list(set(existing_tech + tech_list))
+                result[proto]['tech'] = sorted(combined)
 
     return {
         "found": final,
         "summary": summary,
-        "body_fetched": body is not None,
+        "body_fetched": shared_body is not None,
     }
 
 def _source_priority(source: str) -> int:

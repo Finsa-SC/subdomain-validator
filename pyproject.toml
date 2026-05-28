@@ -18,6 +18,7 @@ dependencies = [
     "textual>=8.2.5",
     "textual-dev>=1.8.0",
     "tldextract>=5.3.1",
+    "tomli>=2.4.1",
     "urllib3>=2.6.3",
 ]
 

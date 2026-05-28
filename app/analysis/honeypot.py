@@ -43,7 +43,6 @@ HONEYPOT_SIZE_RANGE = [
     "cms_trap"
 ]
 
-
 HONEYPOT_SERVERS = [
     "glastopf",
     "wordpot",

@@ -1,18 +1,9 @@
-from models import set_config
+from models import set_config, TIMEOUT, THREAD, DELAY, RETRIES
 from utils import parse_port
-from dotenv import load_dotenv
 from models.scan_config import ScanConfig
 from pathlib import Path
 import os, sys, argparse, tempfile, shutil
 import platform
-
-### Init env
-load_dotenv()
-TIMEOUT = float(os.getenv("TIMEOUT", 3.0))
-THREAD = int(os.getenv("THREAD", 5))
-DEBUG = os.getenv("DEBUG", "false").lower().strip() == "true"
-DELAY = float(os.getenv("DELAY", 0.0))
-RETRIES = int(os.getenv("RETRIES", 0))
 
 VERSION = "1.0.0"
 

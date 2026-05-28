@@ -10,7 +10,6 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 from rich.rule import Rule
-from tldextract import tldextract
 
 from utils import do_screenshot, parse_port, scan_port, get_logger, load_result_from_cache, format_redirect
 
@@ -436,10 +435,12 @@ class FullscreenDetail(Screen):
         from analysis import run_deep_scan
 
         def on_module_done(key, states):
+            from utils import format_subdomain
+
             self.app.call_from_thread(self._refresh_detail)
 
             subdomain = self.result.get("subdomain", "")
-            root = tldextract.extract(subdomain)
+            root = format_subdomain(subdomain)
             domain_root = f"{root.domain}{root.suffix}"
             cached_data = load_result_from_cache(domain_root)
             if subdomain in cached_data:
