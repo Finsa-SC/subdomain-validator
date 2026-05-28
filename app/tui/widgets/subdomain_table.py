@@ -1,4 +1,3 @@
-import select
 from textual.widgets import DataTable
 from rich.text import Text
 from models import BATCH_SIZE, DISPLAY_COLUMNS
@@ -102,11 +101,10 @@ class SubdomainTable(DataTable):
                     formatted = formatter(raw_original)
                     cells.append(self.truncate(formatted, width - 2))
                 except:
-                    cells.append(self.truncate(raw, width - 2))
+                    cells.append(self.truncate(str(raw) if raw is not None else ""))
             else:
-                cells.append(self.truncate(raw, width - 2)) if raw else ""
+                cells.append(self.truncate(str(raw), width - 2) if raw is not None else "")
 
-            cells.append(self.truncate(raw, width - 2)) if raw else ""
         return tuple(cells)
 
     def _get_cursor_subdomain(self) -> str | None:
@@ -150,6 +148,7 @@ class SubdomainTable(DataTable):
 
     @staticmethod
     def truncate(text, max_len):
+        text = str(text) if text is not None else ""
         if max_len >= len(text):
             return text
         return text[:max_len-3] + "..."
