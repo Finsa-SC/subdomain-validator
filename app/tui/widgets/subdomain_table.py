@@ -2,6 +2,16 @@ import select
 from textual.widgets import DataTable
 from rich.text import Text
 from models import BATCH_SIZE, DISPLAY_COLUMNS
+from utils import format_size, format_redirect
+
+_FORMATTERS = {
+    "http.size":    format_size,
+    "https.size":   format_size,
+    "http.latency":  lambda v: f"{v}ms" if v else "-",
+    "https.latency": lambda v: f"{v}ms" if v else "-",
+    "http.redir":   lambda v: format_redirect(v) if v else "-",
+    "https.redir":  lambda v: format_redirect(v) if v else "-",
+}
 
 def _get_nested(data: dict, key: str, fallback: str = "") -> str:
     parts = key.split(".")
@@ -86,6 +96,18 @@ class SubdomainTable(DataTable):
                 continue
 
             raw = _get_nested(result, key)
+
+            formatter  = _FORMATTERS.get(key)
+            if formatter and raw not in ("", None):
+                try:
+                    raw_original = _get_nested(result, key)
+                    formatted = formatter(raw_original)
+                    cells.append(self.truncate(formatted, width - 2))
+                except:
+                    cells.append(self.truncate(raw, width - 2))
+            else:
+                cells.append(self.truncate(raw, width - 2)) if raw else ""
+
             cells.append(self.truncate(raw, width - 2)) if raw else ""
         return tuple(cells)
 
